@@ -1,0 +1,183 @@
+@GameDeals_HostAddress = http://localhost:5261
+@baseUrl = https://localhost:7000
+
+GET {{GameDeals_HostAddress}}/weatherforecast/
+Accept: application/json
+
+### User Controller
+
+### Registrar usuário
+POST {{baseUrl}}/api/User/Registro%20usuário
+Content-Type: application/json
+
+{
+    "nomeSobrenome": "João Silva",
+    "usuarioNome": "joaosilva",
+    "email": "joao@exemplo.com",
+    "senha": "senha123"
+}
+
+### Login usuário
+POST {{baseUrl}}/api/User/Login%20usuário
+Content-Type: application/json
+
+{
+    "email": "joao@exemplo.com",
+    "senha": "senha123"
+}
+
+### Editar usuário
+PUT {{baseUrl}}/api/User/Editar%20usuário
+Content-Type: application/json
+
+{
+    "email": "joao@exemplo.com",
+    "senhaAtual": "senha123",
+    "novoNomeSobrenome": "João Silva Santos",
+    "novoUsuarioNome": "joaosilvasantos",
+    "novaSenha": "novasenha123"
+}
+
+### Excluir usuário
+DELETE {{baseUrl}}/api/User/Excluir%20usuário
+Content-Type: application/json
+
+{
+    "email": "joao@exemplo.com",
+    "senha": "novasenha123"
+}
+
+### Recuperar senha
+POST {{baseUrl}}/api/User/Recuperar%20senha
+Content-Type: application/json
+
+{
+    "email": "joao@exemplo.com",
+    "novaSenha": "novasenha123"
+}
+
+### Empresa Controller
+
+### Cadastrar empresa
+POST {{baseUrl}}/api/Empresa/Cadastrar%20empresa
+Content-Type: application/json
+
+{
+    "siteUrl": "https://exemplo.com",
+    "isAdmin": true
+}
+
+### Listar todas as empresas
+GET {{baseUrl}}/api/Empresa
+
+### Buscar empresa por ID
+GET {{baseUrl}}/api/Empresa/1
+
+### Atualizar empresa
+PUT {{baseUrl}}/api/Empresa/Atualizar%20empresa/1
+Content-Type: application/json
+
+{
+    "siteUrl": "https://novoexemplo.com",
+    "isAdmin": true
+}
+
+### Excluir empresa
+DELETE {{baseUrl}}/api/Empresa/Excluir%20empresa
+Content-Type: application/json
+
+{
+    "nome": "Exemplo",
+    "siteUrl": "https://exemplo.com",
+    "isAdmin": true
+}
+
+### Comentario Controller
+
+### Criar comentário
+POST {{baseUrl}}/api/Comentario/Criar%20comentário
+Content-Type: application/json
+
+{
+    "usuarioId": 1,
+    "promocaoId": 1,
+    "comentarioTexto": "Ótima promoção!"
+}
+
+### Atualizar comentário
+PUT {{baseUrl}}/api/Comentario/Atualizar%20comentário/1
+Content-Type: application/json
+
+{
+    "usuarioId": 1,
+    "comentarioTexto": "Comentário atualizado!"
+}
+
+### Excluir comentário
+DELETE {{baseUrl}}/api/Comentario/Excluir%20comentário/1
+Content-Type: application/json
+
+{
+    "usuarioId": 1,
+    "isAdmin": false
+}
+
+### Listar todos os comentários
+GET {{baseUrl}}/api/Comentario/Listar%20comentários
+
+### Buscar comentário por ID
+GET {{baseUrl}}/api/Comentario/Buscar%20comentário%20por%20ID/1
+
+### Promocao Controller
+
+### Cadastrar nova promoção
+POST {{baseUrl}}/api/Promocao/Cadastrar%20promoção
+Content-Type: application/json
+
+{
+    "usuarioId": 1,
+    "empresaId": 1,
+    "urlPromocao": "https://exemplo.com/produto",
+    "descricao": "Ótima promoção de jogo",
+    "cupom": "PROMO10"
+}
+
+### Atualizar promoção
+PUT {{baseUrl}}/api/Promocao/Atualizar%20promoção/1
+Content-Type: application/json
+
+{
+    "usuarioId": 1,
+    "titulo": "Nova promoção atualizada",
+    "preco": 99.99,
+    "descricao": "Descrição atualizada",
+    "cupom": "PROMO20"
+}
+
+### Deletar promoção
+DELETE {{baseUrl}}/api/Promocao/Deletar%20promoção/1
+Content-Type: application/json
+
+{
+    "usuarioId": 1,
+    "isAdmin": false
+}
+
+### Listar todas as promoções aprovadas
+GET {{baseUrl}}/api/Promocao
+
+### Listar promoção específica
+GET {{baseUrl}}/api/Promocao/Listar%20promoções/1
+
+### Aprovar promoção
+PUT {{baseUrl}}/api/Promocao/Aprovar%20promoção/1
+Content-Type: application/json
+
+{
+    "isAdmin": true
+}
+
+### Listar promoções pendentes
+GET {{baseUrl}}/api/Promocao/Promoções%20pendentes?isAdmin=true
+
+###
