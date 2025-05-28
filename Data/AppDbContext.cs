@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using GameDeals.API.Models;
+using GameDeals.Models;
 
 namespace GameDeals.API.Data
 {
@@ -11,6 +12,7 @@ namespace GameDeals.API.Data
         public DbSet<Promocao> Promocoes { get; set; }
         public DbSet<Comentario> Comentarios { get; set; }
 
-       
-        }
+        public DbSet<Curtidas> Curtidas{ get; set; }
+
     }
+}

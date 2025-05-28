@@ -44,5 +44,10 @@ namespace GameDeals.API.Models
         public int UsuarioId { get; set; }
 
         public Usuario Usuario { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+
     }
 }

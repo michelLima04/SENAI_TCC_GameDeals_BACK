@@ -15,6 +15,7 @@ using Newtonsoft.Json;
 using System.Text;
 using System.Net;
 using Microsoft.AspNetCore.Authorization;
+using GameDeals.Models;
 
 
 namespace AppPromocoesGamer.API.Controllers
@@ -67,7 +68,7 @@ namespace AppPromocoesGamer.API.Controllers
                 var host = new Uri(url).Host.Replace("www.", "").ToLower();
                 var partes = host.Split('.');
 
-                    var sufixosCompostos = new[] { "com.br", "org.br", "net.br", "gov.br" };
+                var sufixosCompostos = new[] { "com.br", "org.br", "net.br", "gov.br" };
                 var dominioFinal = string.Join('.', partes.Skip(partes.Length - 2));
                 if (sufixosCompostos.Contains(dominioFinal) && partes.Length >= 3)
                 {
@@ -153,7 +154,7 @@ namespace AppPromocoesGamer.API.Controllers
         public async Task<IActionResult> PostPromocao([FromBody] PromocaoCreateDTO dto)
         {
             var userEmail = User.Identity.Name;
-              
+
             if (!User.Identity.IsAuthenticated)
             {
                 return Unauthorized("Token inválido ou expirado.");
@@ -194,7 +195,7 @@ namespace AppPromocoesGamer.API.Controllers
             var categoriasGamer = new[]
             {
                 "amd", "cooler", "cpu", "fontes", "gabinete", "gpu", "gtx", "intel", "placa mãe", "ram", "rtx", "ssd", "water cooler", "ryzen",
-                "computador", "monitor", "cadeira", "controle", "fones", "headset", "microfone", "mouse", "mouse pad", "rgb", "teclado",
+                "computador", "monitor", "cadeira", "controle", "fones", "headset", "microfone", "mouse", "mousepad", "rgb", "teclado",
                 "hololens", "htc", "vive", "vr", "óculos", "câmera", "deck", "placa captura", "ring light", "stream", "transmissão",
                 "hub", "modem", "roteador", "switch", "wifi", "hd externo", "nintendo", "ps4", "ps5", "xbox", "digital", "fisica", "game",
                 "games", "gamer", "jogo", "jogos", "steam", "fan", "overclock", "pasta térmica", "ventoinha", "cabo", "organizador", "suporte",
@@ -255,7 +256,7 @@ namespace AppPromocoesGamer.API.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            
+
 
             return Ok(new
             {
@@ -272,36 +273,111 @@ namespace AppPromocoesGamer.API.Controllers
                 .Where(p => p.StatusPublicacao)
                 .ToListAsync();
 
-            foreach (var promocao in promocoes)
-            {
-                // Verifica o preço atual diretamente na URL da promoção
-                var (titulo, imagemUrl, precoAtual, siteVendedor, falhas) = await ExtrairDadosDaUrl(promocao.Url);
-
-                if (precoAtual != promocao.Preco)
-                {
-                    // Se o preço mudou, desativa a publicação
-                    promocao.StatusPublicacao = false;
-                    promocao.MotivoInativacao = "Alteração de preço.";
-                }
-            }
-
             await _context.SaveChangesAsync();
 
-            // Retorna apenas promoções com status publicado
-            var promocoesAtivas = promocoes
-                .Where(p => p.StatusPublicacao)
-                .Select(p => new
-                {
-                    p.Id,
-                    p.Titulo,
-                    p.Preco,
-                    p.Cupom,
-                    p.ImagemUrl,
-                    p.Site,
-                    p.TempoPostado
-                });
+            var promocoesAtivas = _context.Promocoes
+             .Where(p => p.StatusPublicacao)
+             .Select(p => new
+             {
+                 p.Id,
+                 p.Titulo,
+                 p.Preco,
+                 p.Cupom,
+                 p.ImagemUrl,
+                 p.Site,
+                 p.TempoPostado,
+                 p.CreatedAt,
+                 UsuarioNome = _context.Usuarios
+                     .Where(u => u.Id == p.UsuarioId)
+                     .Select(u => u.UsuarioNome)
+                     .FirstOrDefault(),
+                 QuantidadeComentarios = _context.Comentarios.Count(c => c.IdPromocao == p.Id),
+                 QuantidadeCurtidas = _context.Curtidas.Count(c => c.id_promocao == p.Id)
+             })
+             .AsEnumerable()
+             .Select(p => new
+             {
+                 p.Id,
+                 p.Titulo,
+                 p.Preco,
+                 p.Cupom,
+                 p.ImagemUrl,
+                 p.Site,
+                 p.TempoPostado,
+                 p.UsuarioNome,
+                 p.QuantidadeComentarios,
+                 p.QuantidadeCurtidas,
+                 TempoDecorrido = CalcularTempoDecorrido(p.CreatedAt)
+             })
+             .ToList();
+
 
             return Ok(promocoesAtivas);
+        }
+
+        [HttpPost("Feed/{id}/like")]
+        [Authorize]
+        public async Task<IActionResult> LikeFeed(int id)
+        {
+            try
+            {
+                var userEmail = User.Identity.Name;
+
+                if (!User.Identity.IsAuthenticated)
+                {
+                    return Unauthorized("Token inválido ou expirado.");
+                }
+
+                var user = await _context.Usuarios.FirstOrDefaultAsync(c => c.Email == userEmail);
+                if (user == null)
+                {
+                    return NotFound("Usuário não encontrado.");
+                }
+
+                int userId = user.Id;
+
+                bool jaCurtiu = await _context.Curtidas
+                    .AnyAsync(l => l.id_usuario == userId && l.id_promocao == id);
+
+                if (jaCurtiu)
+                {
+                    return BadRequest("Você já curtiu esse post.");
+                }
+
+                var like = new Curtidas
+                {
+                    id_usuario = userId,
+                    id_promocao = id,
+                    created_at = DateTime.UtcNow
+                };
+
+                _context.Curtidas.Add(like);
+                await _context.SaveChangesAsync();
+
+                int quantidadeCurtidas = await _context.Curtidas
+                    .CountAsync(c => c.id_promocao == id);
+
+                return Ok(new
+                {
+                    id = id,
+                    quantidadeCurtidas = quantidadeCurtidas,
+                    jaCurtido = true
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
+        }
+
+        [HttpGet("Feed/test")]
+        public async Task<IActionResult> ListarTest()
+        {
+            var comments = await _context.Comentarios.ToListAsync();
+
+
+
+            return Ok(comments);
         }
 
         private string RemoverAcentos(string texto)
@@ -326,15 +402,18 @@ namespace AppPromocoesGamer.API.Controllers
             var nomeProdutoNormalizado = RemoverAcentos(nomeProduto);
 
             var promocoesEncontradas = await _context.Promocoes
-                .Where(p => RemoverAcentos(p.Titulo).Contains(nomeProdutoNormalizado))
-                .Select(p => new {
+               .Where(p => p.StatusPublicacao)
+                .Select(p => new
+                {
                     p.Id,
                     p.Titulo,
                     p.Preco,
                     p.Cupom,
                     p.ImagemUrl,
                     p.Site,
-                    p.TempoPostado
+                    p.TempoPostado,
+                    QuantidadeComentarios = _context.Comentarios.Count(c => c.IdPromocao == p.Id),
+                    QuantidadeCurtidas = _context.Curtidas.Count(c => c.id_promocao == p.Id)
                 })
                 .ToListAsync();
 
@@ -372,5 +451,31 @@ namespace AppPromocoesGamer.API.Controllers
             return Ok("Promoção excluída com sucesso.");
         }
 
+
+        private static string CalcularTempoDecorrido(DateTime createdAt)
+        {
+            var tempo = DateTime.Now - createdAt;
+
+            if (tempo.TotalMinutes < 1)
+                return "agora mesmo";
+
+            int dias = tempo.Days;
+            int horas = tempo.Hours;
+            int minutos = tempo.Minutes;
+
+            string resultado = "há ";
+
+            if (dias > 0)
+                resultado += $"{dias} dia{(dias > 1 ? "s" : "")} ";
+
+            if (horas > 0)
+                resultado += $"{horas} hora{(horas > 1 ? "s" : "")} ";
+
+            if (minutos > 0)
+                resultado += $"{minutos} minuto{(minutos > 1 ? "s" : "")} ";
+
+            return resultado.Trim() + " atrás";
+        }
+
     }
-}
+    }
