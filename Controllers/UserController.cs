@@ -39,7 +39,8 @@ namespace GameDeals.API.Controllers
                 NomeSobrenome = dto.NomeSobrenome,
                 UsuarioNome = dto.UsuarioNome,
                 Email = dto.Email,
-                Senha = PasswordHasher.Hash(dto.Senha)
+                Senha = PasswordHasher.Hash(dto.Senha),
+                CriadoEm = DateTime.Today 
             };
 
             _context.Usuarios.Add(usuario);
@@ -54,10 +55,13 @@ namespace GameDeals.API.Controllers
                     NomeSobrenome = usuario.NomeSobrenome,
                     UsuarioNome = usuario.UsuarioNome,
                     Email = usuario.Email,
-                    IsAdmin = usuario.IsAdmin
+                    IsAdmin = usuario.IsAdmin,
+                    CriadoEm = usuario.CriadoEm,
+                    Contribuicoes = usuario.Contribuicoes
                 }
             });
         }
+
 
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] UserLoginDTO dto)
@@ -108,8 +112,8 @@ namespace GameDeals.API.Controllers
             });
         }
 
-        [HttpPut("Atualizar-Dados/{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] UserResponseDTO dto)
+        [HttpPut("Atualizar-Nome/{id}")]
+        public async Task<IActionResult> UpdateNome(int id, [FromBody] string novoNomeSobrenome)
         {
             if (!User.Identity.IsAuthenticated)
                 return Unauthorized(new { mensagem = "Usuário não autenticado." });
@@ -121,13 +125,13 @@ namespace GameDeals.API.Controllers
             if (usuario.Id != id)
                 return BadRequest(new { mensagem = "Você não pode editar os dados de outro usuário." });
 
-            usuario.NomeSobrenome = dto.NomeSobrenome ?? usuario.NomeSobrenome;
-            usuario.UsuarioNome = dto.UsuarioNome ?? usuario.UsuarioNome;
+            usuario.NomeSobrenome = novoNomeSobrenome ?? usuario.NomeSobrenome;
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { mensagem = "Dados atualizados com sucesso." });
+            return Ok(new { mensagem = "Nome atualizado com sucesso." });
         }
+
 
         [HttpPost("Recuperar-Senha")]
         public async Task<IActionResult> RecuperarSenha([FromBody] RecuperarSenhaDTO dto)

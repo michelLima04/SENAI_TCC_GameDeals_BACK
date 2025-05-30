@@ -149,6 +149,59 @@ namespace AppPromocoesGamer.API.Controllers
             return (titulo, imagemUrl, preco, siteVendedor, falhas);
         }
 
+        public static class CategoriasGamer
+        {
+            public static readonly string[] Lista = new[]
+            {
+                // Hardware (PC e componentes)
+                "amd", "cooler", "cpu", "fontes", "gabinete", "gpu", "gtx", "intel", "placa mãe", "ram", "rtx", "ssd", "water cooler", "ryzen",
+                "hdd", "nvme", "m.2", "air cooler", "thermal pad", "pasta térmica", "ventoinha", "fan", "overclock", "liquid cooling",
+                "chipset", "threadripper", "core", "i9", "i7", "i5", "i3", "zen", "epyc", "raid", "sata", "pcie", "psu",
+                "fonte modular", "80 plus", "crossfire", "sli", "vrm", "heatsink", "radiador", "aio", "custom loop",
+
+                // Periféricos
+                "monitor", "cadeira", "controle", "fones", "headset", "microfone", "mouse", "mousepad", "rgb", "teclado",
+                "teclado mecânico", "teclado membrana", "switch cherry", "switch red", "switch blue", "switch brown",
+                "mouse óptico", "mouse laser", "dpi", "webcam", "ring light", "placa captura", "stream deck", "cabo hdmi",
+                "cabo displayport", "adaptador usb", "hub usb", "suporte monitor", "mesa gamer", "led strip",
+                "microfone condensador", "microfone dinâmico", "pop filter", "braço articulado", "gamepad", "joystick",
+                "trackball", "touchpad", "volante", "pedal", "teclado ergonômico",
+
+                // Realidade Virtual e Aumentada
+                "hololens", "htc", "vive", "vr", "óculos", "oculus", "quest", "rift", "valve index", "ar", "mixed reality",
+                "motion tracking", "controlador vr", "sensor vr", "base station", "vr headset",
+
+                // Consoles e Jogos
+                "nintendo", "ps4", "ps5", "xbox", "xbox series x", "xbox series s", "switch oled", "gamecube", "wii",
+                "playstation vr", "dualshock", "dualsense", "joy-con", "game pass", "playstation plus", "nintendo online",
+                "digital", "física", "game", "games", "gamer", "jogo", "jogos", "steam", "epic games", "battle.net",
+                "origin", "uplay", "retro gaming", "emulador", "arcade", "mini console", "collector's edition", 
+
+                // Streaming e Conectividade
+                "stream", "transmissão", "twitch", "youtube gaming", "obs", "streamlabs", "elgato", "green screen",
+                "chroma key", "câmera", "webcam 4k", "hub", "modem", "roteador", "switch", "wifi", "wifi 6", "mesh",
+                "extensor wifi", "powerline", "ethernet", "cabo rj45", "fibra óptica", "adaptador wireless", "dongle",
+
+                // Armazenamento e Acessórios
+                "hd externo", "pen drive", "cartão sd", "cartão microsd", "nas", "servidor", "backup", "cloud storage",
+                "case ssd", "docking station", "cabo", "organizador", "suporte", "cabo management", "tie wrap",
+                "adaptador sata", "adaptador nvme", "drive óptico", "leitor de cartão",
+
+                // Outros (Estilo e Conforto Gamer)
+                "frigobar", "gaming", "reddragon", "razer", "logitech", "hyperx", "corsair", "steelseries", "asus rog",
+                "msi", "gigabyte", "nzxt", "thermaltake", "cooler master", "alienware", "acer predator", "lenovo legion",
+                "hp omen", "deskmat", "luz ambiente", "painel led", "setup gamer", "customização", "skins", "adesivo gamer",
+                "cooling pad", "estação de recarga", "bateria externa", "tapete ergonômico", "suporte headset",
+                "almofada gamer", "ventilador portátil", "purificador de ar",
+
+                // Tendências e Miscelânea
+                "esports", "battle royale", "open world", "rpg", "fps", "moba", "indie game", "cloud gaming", "ray tracing",
+                "dlss", "fsr", "4k", "8k", "120hz", "144hz", "240hz", "ultrawide", "curvo", "monitor portátil",
+                "smart glasses", "wearable", "tecnologia háptica", "feedback tátil", "crossplay", "modding",
+                "waterblock", "gpu cooler", "fan controller", "rgb controller", "smart home", "alexa", "google home"
+            };
+        }
+
         [HttpPost("Cadastrar")]
         [Authorize]
         public async Task<IActionResult> PostPromocao([FromBody] PromocaoCreateDTO dto)
@@ -192,28 +245,17 @@ namespace AppPromocoesGamer.API.Controllers
                     .ToLower();
             }
 
-            var categoriasGamer = new[]
-            {
-                "amd", "cooler", "cpu", "fontes", "gabinete", "gpu", "gtx", "intel", "placa mãe", "ram", "rtx", "ssd", "water cooler", "ryzen",
-                "computador", "monitor", "cadeira", "controle", "fones", "headset", "microfone", "mouse", "mousepad", "rgb", "teclado",
-                "hololens", "htc", "vive", "vr", "óculos", "câmera", "deck", "placa captura", "ring light", "stream", "transmissão",
-                "hub", "modem", "roteador", "switch", "wifi", "hd externo", "nintendo", "ps4", "ps5", "xbox", "digital", "fisica", "game",
-                "games", "gamer", "jogo", "jogos", "steam", "fan", "overclock", "pasta térmica", "ventoinha", "cabo", "organizador", "suporte",
-                "frigobar", "gaming", "reddragon"
-            };
-
             var tituloNormalizado = RemoverAcentos(tituloTemp ?? "");
 
-            int matchCount = categoriasGamer
-                .Select(label => RemoverAcentos(label))
-                .Count(label => tituloNormalizado.Contains(label));
+            int matchCount = CategoriasGamer.Lista
+            .Select(label => RemoverAcentos(label))
+            .Count(label => tituloNormalizado.Contains(label));
 
             if (matchCount < 2)
             {
                 return BadRequest(new { mensagem = "Este produto não é compatível ao nicho Gamer." });
             }
 
-            // Extração completa dos dados
             var (titulo, imagemUrl, preco, siteVendedor, falhas) = await ExtrairDadosDaUrl(dto.UrlPromocao);
 
             if (string.IsNullOrWhiteSpace(titulo))
@@ -253,10 +295,12 @@ namespace AppPromocoesGamer.API.Controllers
             if (dto.isAdd)
             {
                 _context.Promocoes.Add(promocao);
+
+                user.Contribuicoes += 1;
+                _context.Usuarios.Update(user);
+
                 await _context.SaveChangesAsync();
             }
-
-
 
             return Ok(new
             {
