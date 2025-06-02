@@ -26,11 +26,14 @@ namespace AppPromocoesGamer.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly OperacaoLogService _logService;
 
-        public PromocaoController(AppDbContext context, IHttpContextAccessor httpContextAccessor)
+        public PromocaoController(AppDbContext context, IHttpContextAccessor httpContextAccessor, OperacaoLogService logService)
         {
             _context = context;
             _httpContextAccessor = httpContextAccessor;
+            _logService = logService;
+
         }
 
         private int ObterUsuarioId()
@@ -217,7 +220,7 @@ namespace AppPromocoesGamer.API.Controllers
 
             if (valid_promo != null && (valid_promo.StatusPublicacao || valid_promo.Url != ""))
             {
-                return BadRequest(new { mensagem = "Já contem uma promoção em andamento." });
+                return BadRequest(new { mensagem = "Já contém uma promoção em andamento." });
             }
 
             var user = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == userEmail);
@@ -248,8 +251,8 @@ namespace AppPromocoesGamer.API.Controllers
             var tituloNormalizado = RemoverAcentos(tituloTemp ?? "");
 
             int matchCount = CategoriasGamer.Lista
-            .Select(label => RemoverAcentos(label))
-            .Count(label => tituloNormalizado.Contains(label));
+                .Select(label => RemoverAcentos(label))
+                .Count(label => tituloNormalizado.Contains(label));
 
             if (matchCount < 2)
             {
@@ -300,6 +303,14 @@ namespace AppPromocoesGamer.API.Controllers
                 _context.Usuarios.Update(user);
 
                 await _context.SaveChangesAsync();
+
+                await _logService.RegistrarAsync(
+                    user.Id,
+                    "Cadastro",
+                    "Promocao",
+                    promocao.Id,
+                    $"Promoção '{promocao.Titulo}' cadastrada pelo usuário {user.UsuarioNome}."
+                );
             }
 
             return Ok(new
@@ -310,54 +321,110 @@ namespace AppPromocoesGamer.API.Controllers
         }
 
         [HttpGet("Feed")]
-        public async Task<IActionResult> ListarFeed()
+        public async Task<IActionResult> ListarFeed([FromQuery] string? titulo)
         {
-            var promocoes = await _context.Promocoes
+            var query = _context.Promocoes
                 .Include(p => p.Usuario)
-                .Where(p => p.StatusPublicacao)
+                .Where(p => p.StatusPublicacao);
+
+            if (!string.IsNullOrEmpty(titulo))
+            {
+                query = query.Where(p => p.Titulo.Contains(titulo));
+            }
+
+            var promocoes = await query
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Titulo,
+                    p.Preco,
+                    p.Cupom,
+                    p.ImagemUrl,
+                    p.Site,
+                    p.TempoPostado,
+                    p.CreatedAt,
+                    UsuarioNome = p.Usuario.UsuarioNome,
+                    QuantidadeComentarios = _context.Comentarios.Count(c => c.IdPromocao == p.Id),
+                    QuantidadeCurtidas = _context.Curtidas.Count(c => c.id_promocao == p.Id)
+                })
                 .ToListAsync();
 
-            await _context.SaveChangesAsync();
+            var promocoesComTempo = promocoes
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Titulo,
+                    p.Preco,
+                    p.Cupom,
+                    p.ImagemUrl,
+                    p.Site,
+                    p.TempoPostado,
+                    p.UsuarioNome,
+                    p.QuantidadeComentarios,
+                    p.QuantidadeCurtidas,
+                    TempoDecorrido = CalcularTempoDecorrido(p.CreatedAt)
+                })
+                .ToList();
 
-            var promocoesAtivas = _context.Promocoes
-             .Where(p => p.StatusPublicacao)
-             .Select(p => new
-             {
-                 p.Id,
-                 p.Titulo,
-                 p.Preco,
-                 p.Cupom,
-                 p.ImagemUrl,
-                 p.Site,
-                 p.TempoPostado,
-                 p.CreatedAt,
-                 UsuarioNome = _context.Usuarios
-                     .Where(u => u.Id == p.UsuarioId)
-                     .Select(u => u.UsuarioNome)
-                     .FirstOrDefault(),
-                 QuantidadeComentarios = _context.Comentarios.Count(c => c.IdPromocao == p.Id),
-                 QuantidadeCurtidas = _context.Curtidas.Count(c => c.id_promocao == p.Id)
-             })
-             .AsEnumerable()
-             .Select(p => new
-             {
-                 p.Id,
-                 p.Titulo,
-                 p.Preco,
-                 p.Cupom,
-                 p.ImagemUrl,
-                 p.Site,
-                 p.TempoPostado,
-                 p.UsuarioNome,
-                 p.QuantidadeComentarios,
-                 p.QuantidadeCurtidas,
-                 TempoDecorrido = CalcularTempoDecorrido(p.CreatedAt)
-             })
-             .ToList();
-
-
-            return Ok(promocoesAtivas);
+            return Ok(promocoesComTempo);
         }
+
+
+        [HttpGet("Feed/{id}")]
+        public async Task<IActionResult> FindPromo(int id)  
+        {
+            var promocao = await _context.Promocoes
+                .Include(p => p.Usuario)
+                .Include(p => p.Comentarios)
+                    .ThenInclude(c => c.Usuario)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (promocao == null)
+                return NotFound();
+
+            var result = new PromocaoFeedDTO
+            {
+                Id = promocao.Id,
+                Titulo = promocao.Titulo,
+                Site = promocao.Site,
+                Preco = promocao.Preco,
+                ImagemUrl = promocao.ImagemUrl,
+                CreatedAt = promocao.CreatedAt,
+                UsuarioNome = promocao.Usuario.UsuarioNome,
+                Comentarios = promocao.Comentarios.Select(c => new ComentarioDTO
+                {
+                    Id = c.Id,
+                    ComentarioTexto = c.ComentarioTexto,
+                    DataComentario = c.DataComentario,
+                    IsDono = c.IsDono,
+                    UsuarioNome = c.Usuario.UsuarioNome
+                }).ToList()
+            };
+
+            return Ok(result);
+        }
+
+        public class ComentarioDTO
+        {
+            public int Id { get; set; }
+            public string ComentarioTexto { get; set; }
+            public DateTime DataComentario { get; set; }
+            public bool IsDono { get; set; }
+            public string UsuarioNome { get; set; }
+        }
+
+        public class PromocaoFeedDTO
+        {
+            public int Id { get; set; }
+            public string Titulo { get; set; }
+            public string Site { get; set; }
+            public decimal Preco { get; set; }
+            public string? ImagemUrl { get; set; }
+            public DateTime CreatedAt { get; set; }
+            public string UsuarioNome { get; set; }
+            public List<ComentarioDTO> Comentarios { get; set; }
+        }
+
 
         [HttpPost("Feed/{id}/like")]
         [Authorize]
@@ -412,16 +479,6 @@ namespace AppPromocoesGamer.API.Controllers
             {
                 return StatusCode(500, $"Erro interno: {ex.Message}");
             }
-        }
-
-        [HttpGet("Feed/test")]
-        public async Task<IActionResult> ListarTest()
-        {
-            var comments = await _context.Comentarios.ToListAsync();
-
-
-
-            return Ok(comments);
         }
 
         private string RemoverAcentos(string texto)

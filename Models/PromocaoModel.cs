@@ -49,5 +49,8 @@ namespace GameDeals.API.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
 
+        public List<Comentario> Comentarios { get; set; } = new();
+
+
     }
 }

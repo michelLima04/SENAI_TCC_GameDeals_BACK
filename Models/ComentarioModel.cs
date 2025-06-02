@@ -11,6 +11,12 @@ namespace GameDeals.API.Models
         [Column("isDono")]
         public bool IsDono { get; set; }
 
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("updated_at")]
+        public DateTime UpdatedAt { get; set; }
+
         [Column("comentario_texto")]
         public string ComentarioTexto { get; set; }
 

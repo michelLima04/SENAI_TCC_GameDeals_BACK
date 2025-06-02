@@ -5,8 +5,6 @@ using GameDeals.API.Data;
 using GameDeals.API.DTOs;
 using GameDeals.API.Helpers;
 using GameDeals.API.Models;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,13 +18,14 @@ namespace GameDeals.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly OperacaoLogService _logService;
 
-        public UsuariosController(AppDbContext context, IConfiguration configuration)
+        public UsuariosController(AppDbContext context, IConfiguration configuration, OperacaoLogService logService)
         {
             _context = context;
             _configuration = configuration;
+            _logService = logService;
         }
-
 
         [HttpPost("Registro")]
         public async Task<IActionResult> Register(UserRegisterDTO dto)
@@ -40,11 +39,19 @@ namespace GameDeals.API.Controllers
                 UsuarioNome = dto.UsuarioNome,
                 Email = dto.Email,
                 Senha = PasswordHasher.Hash(dto.Senha),
-                CriadoEm = DateTime.Today 
+                CriadoEm = DateTime.Today
             };
 
             _context.Usuarios.Add(usuario);
             await _context.SaveChangesAsync();
+
+            await _logService.RegistrarAsync(
+                usuario.Id,
+                "Registro",
+                "Usuario",
+                usuario.Id,
+                $"Usuário '{usuario.UsuarioNome}' foi registrado."
+            );
 
             return Ok(new
             {
@@ -62,7 +69,6 @@ namespace GameDeals.API.Controllers
             });
         }
 
-
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] UserLoginDTO dto)
         {
@@ -71,13 +77,13 @@ namespace GameDeals.API.Controllers
             if (usuario == null)
                 return Unauthorized(new { mensagem = "Usuário não encontrado." });
 
-            if (PasswordHasher.Hash(dto.Senha) != usuario.Senha)
+            if (!PasswordHasher.Verify(dto.Senha, usuario.Senha))
                 return BadRequest(new { mensagem = "Senha incorreta." });
 
             if (usuario.EstaBloqueado)
                 return Unauthorized(new { mensagem = "Este usuário está bloqueado." });
 
-            if (usuario.Email == "adm@gmail.com" && PasswordHasher. Verify("123456", usuario.Senha) && !usuario.IsAdmin)
+            if (usuario.Email == "adm@gmail.com" && !usuario.IsAdmin)
             {
                 usuario.IsAdmin = true;
                 _context.Usuarios.Update(usuario);
@@ -105,6 +111,14 @@ namespace GameDeals.API.Controllers
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
+            await _logService.RegistrarAsync(
+                usuario.Id,
+                "Login",
+                "Usuario",
+                usuario.Id,
+                $"Usuário '{usuario.UsuarioNome}' fez login."
+            );
+
             return Ok(new
             {
                 mensagem = usuario.IsAdmin ? "Seja bem-vindo, Admin!" : "Login realizado com sucesso.",
@@ -112,110 +126,138 @@ namespace GameDeals.API.Controllers
             });
         }
 
-        [HttpPut("Atualizar-Nome/{id}")]
-        public async Task<IActionResult> UpdateNome(int id, [FromBody] string novoNomeSobrenome)
+        [Authorize]
+        [HttpPut("Profile/editar")]
+        public async Task<IActionResult> EditarPerfil([FromBody] EditarPerfilDTO dto)
         {
-            if (!User.Identity.IsAuthenticated)
-                return Unauthorized(new { mensagem = "Usuário não autenticado." });
+            var userEmail = User.Identity?.Name;
+            if (string.IsNullOrEmpty(userEmail))
+                return Unauthorized("Usuário não autenticado.");
 
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == userEmail);
             if (usuario == null)
-                return NotFound(new { mensagem = "Usuário não encontrado." });
+                return NotFound("Usuário não encontrado.");
 
-            if (usuario.Id != id)
-                return BadRequest(new { mensagem = "Você não pode editar os dados de outro usuário." });
+            usuario.NomeSobrenome = dto.NomeSobrenome;
+            usuario.UsuarioNome = dto.UsuarioNome;
+            usuario.Email = dto.Email;
 
-            usuario.NomeSobrenome = novoNomeSobrenome ?? usuario.NomeSobrenome;
+            await _logService.RegistrarAsync(
+                usuario.Id,
+                "EditarPerfil",
+                "Usuario",
+                usuario.Id,
+                $"Usuário '{usuario.UsuarioNome}' atualizou seu perfil."
+            );
 
             await _context.SaveChangesAsync();
-
-            return Ok(new { mensagem = "Nome atualizado com sucesso." });
+            return Ok(new { message = "Perfil atualizado com sucesso" });
         }
 
-
-        [HttpPost("Recuperar-Senha")]
-        public async Task<IActionResult> RecuperarSenha([FromBody] RecuperarSenhaDTO dto)
+        [Authorize]
+        [HttpPut("Profile/trocar-senha")]
+        public async Task<IActionResult> TrocarSenha([FromBody] TrocarSenhaDTO dto)
         {
-            if (!User.Identity.IsAuthenticated)
-                return Unauthorized(new { mensagem = "Usuário não autenticado." });
+            var userEmail = User.Identity?.Name;
+            if (string.IsNullOrEmpty(userEmail))
+                return Unauthorized("Usuário não autenticado.");
 
-            if (dto.NovaSenha != dto.ConfirmarSenha)
-                return BadRequest(new { mensagem = "As senhas não coincidem." });
-
-            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == userEmail);
             if (usuario == null)
-                return NotFound(new { mensagem = "Usuário não encontrado." });
+                return NotFound("Usuário não encontrado.");
+
+            if (!PasswordHasher.Verify(dto.SenhaAtual, usuario.Senha))
+                return BadRequest("Senha atual incorreta.");
 
             usuario.Senha = PasswordHasher.Hash(dto.NovaSenha);
             await _context.SaveChangesAsync();
 
-            return Ok(new { mensagem = "Senha atualizada com sucesso." });
+            await _logService.RegistrarAsync(
+                usuario.Id,
+                "TrocarSenha",
+                "Usuario",
+                usuario.Id,
+                $"Usuário '{usuario.UsuarioNome}' alterou sua senha."
+            );
+
+            return Ok(new { message = "Senha atualizada com sucesso" });
         }
 
-        [HttpDelete("Deletar-Usuario/{id}")]
-        public async Task<IActionResult> DeletarUsuario(int id)
+        [Authorize]
+        [HttpGet("Profile/me")]
+        public async Task<IActionResult> ObterPerfil()
         {
-            if (!User.Identity.IsAuthenticated)
+            var userEmail = User.Identity?.Name;
+
+            if (string.IsNullOrEmpty(userEmail))
                 return Unauthorized("Usuário não autenticado.");
 
-            var emailLogado = User.FindFirstValue(ClaimTypes.Name);
-            var usuarioLogado = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == emailLogado);
+            var usuario = await _context.Usuarios
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Email == userEmail);
 
-            if (usuarioLogado == null)
-                return Unauthorized("Usuário não encontrado.");
-
-            if (!usuarioLogado.IsAdmin && usuarioLogado.Id != id)
-                return Forbid("Você só pode deletar sua própria conta.");
-
-            var usuario = await _context.Usuarios.FindAsync(id);
             if (usuario == null)
                 return NotFound("Usuário não encontrado.");
 
-            if (usuario.IsAdmin && usuarioLogado.Id != usuario.Id)
-                return BadRequest("Você não pode deletar outro administrador.");
+            var totalPromocoes = await _context.Promocoes
+                .CountAsync(p => p.UsuarioId == usuario.Id);
 
-            _context.Usuarios.Remove(usuario);
-            await _context.SaveChangesAsync();
+            var logs = await _context.OperacaoLog
+                .Where(log => log.IdUsuario == usuario.Id)
+                .OrderByDescending(log => log.CreatedAt)
+                .Take(10)
+                .Select(log => new
+                {
+                    acao = log.Acao,
+                    entidadeAfetada = log.EntidadeAfetada,
+                    idEntidade = log.IdEntidade,
+                    detalhes = log.Detalhes,
+                    createdAt = log.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")
+                })
+                .ToListAsync();
 
-            return Ok("Usuário deletado com sucesso.");
+            return Ok(new
+            {
+                fullName = usuario.NomeSobrenome,
+                username = "@" + usuario.UsuarioNome,
+                email = usuario.Email,
+                joinDate = usuario.CriadoEm.ToString("dd/MM/yyyy"),
+                contributions = totalPromocoes,
+                logs = logs
+            });
         }
 
-        [Authorize(Roles = "Admin")]
-        [HttpGet("Buscar-Usuario-ADM")]
-        public async Task<IActionResult> BuscarUsuario([FromQuery] string termo)
+        [Authorize]
+        [HttpPut("Profile/atualizar-contribuicoes")]
+        public async Task<IActionResult> AtualizarContribuicoes()
         {
-            var usuario = await _context.Usuarios
-                .FirstOrDefaultAsync(u => u.NomeSobrenome.Contains(termo) || u.Email.Contains(termo));
+            var userEmail = User.Identity?.Name;
+            if (string.IsNullOrEmpty(userEmail))
+                return Unauthorized("Usuário não autenticado.");
 
+            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == userEmail);
             if (usuario == null)
                 return NotFound("Usuário não encontrado.");
 
-            return Ok(usuario);
-        }
+            int totalPromocoes = await _context.Promocoes.CountAsync(p => p.UsuarioId == usuario.Id);
+            usuario.Contribuicoes = totalPromocoes;
 
-        [Authorize(Roles = "Admin")]
-        [HttpPut("Bloquear-Desbloquear-User(ADM)")]
-        public async Task<IActionResult> BloquearDesbloquearUsuario([FromQuery] string termo)
-        {
-            var emailLogado = User.FindFirstValue(ClaimTypes.Name);
-            var usuarioLogado = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == emailLogado);
-
-            if (usuarioLogado == null || !usuarioLogado.IsAdmin)
-                return Forbid("Apenas administradores logados podem realizar esta ação.");
-
-            var usuario = await _context.Usuarios
-                .FirstOrDefaultAsync(u => u.UsuarioNome == termo || u.Email == termo);
-
-            if (usuario == null)
-                return NotFound("Usuário não encontrado.");
-
-            if (usuario.IsAdmin)
-                return BadRequest("Você não pode bloquear um administrador.");
-
-            usuario.EstaBloqueado = !usuario.EstaBloqueado;
             await _context.SaveChangesAsync();
 
-            return Ok($"Usuário {(usuario.EstaBloqueado ? "bloqueado" : "desbloqueado")} com sucesso.");
+            return Ok(new { message = "Contribuições atualizadas", total = totalPromocoes });
+        }
+
+        public class EditarPerfilDTO
+        {
+            public string NomeSobrenome { get; set; } = string.Empty;
+            public string UsuarioNome { get; set; } = string.Empty;
+            public string Email { get; set; } = string.Empty;
+        }
+
+        public class TrocarSenhaDTO
+        {
+            public string SenhaAtual { get; set; } = string.Empty;
+            public string NovaSenha { get; set; } = string.Empty;
         }
     }
 }
