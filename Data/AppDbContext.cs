@@ -13,6 +13,8 @@ namespace GameDeals.API.Data
         public DbSet<Comentario> Comentarios { get; set; }
 
         public DbSet<Curtidas> Curtidas{ get; set; }
+        public DbSet<OperacaoLogModel> OperacaoLog { get; set; }
+
 
     }
 }
