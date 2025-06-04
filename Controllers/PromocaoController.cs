@@ -152,6 +152,9 @@ namespace AppPromocoesGamer.API.Controllers
             return (titulo, imagemUrl, preco, siteVendedor, falhas);
         }
 
+
+
+
         public static class CategoriasGamer
         {
             public static readonly string[] Lista = new[]
@@ -176,9 +179,9 @@ namespace AppPromocoesGamer.API.Controllers
 
                 // Consoles e Jogos
                 "nintendo", "ps4", "ps5", "xbox", "xbox series x", "xbox series s", "switch oled", "gamecube", "wii",
-                "playstation vr", "dualshock", "dualsense", "joy-con", "game pass", "playstation plus", "nintendo online",
-                "digital", "física", "game", "games", "gamer", "jogo", "jogos", "steam", "epic games", "battle.net",
-                "origin", "uplay", "retro gaming", "emulador", "arcade", "mini console", "collector's edition", 
+                "playstation", "dualshock", "dualsense", "joy-con", "game pass", "playstation plus", "nintendo online",
+                "digital", "física", "game", "games", "gamer", "gaming", "jogo", "jogos", "steam", "epic games", "battle.net",
+                "origin", "uplay", "retro", "emulador", "arcade", "mini console", "edicao", "padrao", 
 
                 // Streaming e Conectividade
                 "stream", "transmissão", "twitch", "youtube gaming", "obs", "streamlabs", "elgato", "green screen",
@@ -385,6 +388,7 @@ namespace AppPromocoesGamer.API.Controllers
             var result = new PromocaoFeedDTO
             {
                 Id = promocao.Id,
+                Url = promocao.Url,
                 Titulo = promocao.Titulo,
                 Site = promocao.Site,
                 Preco = promocao.Preco,
@@ -412,19 +416,6 @@ namespace AppPromocoesGamer.API.Controllers
             public bool IsDono { get; set; }
             public string UsuarioNome { get; set; }
         }
-
-        public class PromocaoFeedDTO
-        {
-            public int Id { get; set; }
-            public string Titulo { get; set; }
-            public string Site { get; set; }
-            public decimal Preco { get; set; }
-            public string? ImagemUrl { get; set; }
-            public DateTime CreatedAt { get; set; }
-            public string UsuarioNome { get; set; }
-            public List<ComentarioDTO> Comentarios { get; set; }
-        }
-
 
         [HttpPost("Feed/{id}/like")]
         [Authorize]
