@@ -1,4 +1,5 @@
-﻿using static AppPromocoesGamer.API.Controllers.PromocaoController;
+﻿using GameDeals.API.DTOs;
+using static AppPromocoesGamer.API.Controllers.PromocaoController;
 
 namespace GameDeals.DTOs.PromocaoDTOs
 {
@@ -13,6 +14,6 @@ namespace GameDeals.DTOs.PromocaoDTOs
         public string? ImagemUrl { get; set; }
         public DateTime CreatedAt { get; set; }
         public string UsuarioNome { get; set; }
-        public List<ComentarioDTO> Comentarios { get; set; }
+        public List<ComentarioCreateDTO> Comentarios { get; set; }
     }
 }

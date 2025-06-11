@@ -33,24 +33,18 @@ namespace GameDeals.API.Controllers
             var usuario = await _context.Usuarios
                 .FirstOrDefaultAsync(u => u.Email == emailUsuario);
 
-            if (usuario == null || usuario.IsAdmin)
-                return Unauthorized(new { mensagem = "Apenas usuários padrão podem comentar." });
-
             var promocao = await _context.Promocoes
-                .FirstOrDefaultAsync(p => p.Id == dto.IdPromocao && p.StatusPublicacao == true);
+                .FirstOrDefaultAsync(p => p.Id == dto.Id && p.StatusPublicacao == true);
 
             if (promocao == null)
                 return NotFound(new { mensagem = "Promoção não encontrada ou ainda não foi publicada." });
-
-            bool isDono = promocao.UsuarioId == usuario.Id;
 
             var comentario = new Comentario
             {
                 ComentarioTexto = dto.ComentarioTexto,
                 DataComentario = DateTime.Now,
                 IdUsuario = usuario.Id,
-                IdPromocao = dto.IdPromocao,
-                IsDono = isDono
+                IdPromocao = dto.Id,
             };
 
             _context.Comentarios.Add(comentario);
@@ -70,7 +64,6 @@ namespace GameDeals.API.Controllers
                 comentario.Id,
                 comentario.ComentarioTexto,
                 comentario.DataComentario,
-                comentario.IsDono,
                 Usuario = usuario.UsuarioNome,
                 comentario.IdPromocao
             });
@@ -136,10 +129,6 @@ namespace GameDeals.API.Controllers
                 return NotFound(new { mensagem = "Comentário não encontrado." });
 
             bool isAutor = comentario.IdUsuario == usuario.Id;
-            bool isAdmin = usuario.IsAdmin;
-
-            if (!isAutor && !isAdmin)
-                return Forbid("Você não tem permissão para excluir este comentário.");
 
             _context.Comentarios.Remove(comentario);
             await _context.SaveChangesAsync();

@@ -24,8 +24,5 @@ namespace GameDeals.API.Models
         public DateTime CriadoEm { get; set; } = DateTime.Now;
 
         public int Contribuicoes { get; set; } = 0;
-
-        public bool IsAdmin { get; set; }
-        public bool EstaBloqueado { get; set; } = false;
     }
 }

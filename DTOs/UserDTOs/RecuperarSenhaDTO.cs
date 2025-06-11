@@ -1,6 +1,5 @@
-﻿public class RecuperarSenhaDTO
+﻿public class TrocarSenhaDTO
 {
-    public string Email { get; set; }
-    public string NovaSenha { get; set; }
-    public string ConfirmarSenha { get; set; }
+    public string SenhaAtual { get; set; } = string.Empty;
+    public string NovaSenha { get; set; } = string.Empty;
 }

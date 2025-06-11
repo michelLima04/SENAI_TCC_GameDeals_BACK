@@ -8,9 +8,6 @@ namespace GameDeals.API.Models
     {
         public int Id { get; set; }
 
-        [Column("isDono")]
-        public bool IsDono { get; set; }
-
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 

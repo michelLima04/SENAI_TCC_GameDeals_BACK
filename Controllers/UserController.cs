@@ -62,7 +62,6 @@ namespace GameDeals.API.Controllers
                     NomeSobrenome = usuario.NomeSobrenome,
                     UsuarioNome = usuario.UsuarioNome,
                     Email = usuario.Email,
-                    IsAdmin = usuario.IsAdmin,
                     CriadoEm = usuario.CriadoEm,
                     Contribuicoes = usuario.Contribuicoes
                 }
@@ -80,22 +79,12 @@ namespace GameDeals.API.Controllers
             if (!PasswordHasher.Verify(dto.Senha, usuario.Senha))
                 return BadRequest(new { mensagem = "Senha incorreta." });
 
-            if (usuario.EstaBloqueado)
-                return Unauthorized(new { mensagem = "Este usuário está bloqueado." });
-
-            if (usuario.Email == "adm@gmail.com" && !usuario.IsAdmin)
-            {
-                usuario.IsAdmin = true;
-                _context.Usuarios.Update(usuario);
-                await _context.SaveChangesAsync();
-            }
 
             var claims = new List<Claim>
             {
                 new Claim("userName", usuario.UsuarioNome),
                 new Claim(ClaimTypes.Name, usuario.Email),
                 new Claim("UserId", usuario.Id.ToString()),
-                new Claim(ClaimTypes.Role, usuario.IsAdmin ? "Admin" : "User")
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
@@ -121,7 +110,6 @@ namespace GameDeals.API.Controllers
 
             return Ok(new
             {
-                mensagem = usuario.IsAdmin ? "Seja bem-vindo, Admin!" : "Login realizado com sucesso.",
                 token = tokenString
             });
         }
@@ -247,17 +235,7 @@ namespace GameDeals.API.Controllers
             return Ok(new { message = "Contribuições atualizadas", total = totalPromocoes });
         }
 
-        public class EditarPerfilDTO
-        {
-            public string NomeSobrenome { get; set; } = string.Empty;
-            public string UsuarioNome { get; set; } = string.Empty;
-            public string Email { get; set; } = string.Empty;
-        }
+     
 
-        public class TrocarSenhaDTO
-        {
-            public string SenhaAtual { get; set; } = string.Empty;
-            public string NovaSenha { get; set; } = string.Empty;
-        }
     }
 }

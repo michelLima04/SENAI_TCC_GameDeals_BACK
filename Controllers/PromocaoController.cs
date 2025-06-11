@@ -43,15 +43,8 @@ namespace AppPromocoesGamer.API.Controllers
             return usuarioLogado?.Id ?? 0;
         }
 
-        private bool UsuarioEhAdmin()
-        {
-            var emailLogado = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name || c.Type == "email")?.Value;
-            var usuarioLogado = _context.Usuarios.FirstOrDefault(u => u.Email == emailLogado);
-            return usuarioLogado?.IsAdmin ?? false;
-        }
-
         private async Task<(string titulo, string imagemUrl, decimal preco, string siteVendedor, List<string> falhas)>
-        ExtrairDadosDaUrl(string url)
+        ExtrairDadosDaUrl(string url, bool apenasPreco = false)
         {
             var falhas = new List<string>();
             string titulo = null;
@@ -68,36 +61,50 @@ namespace AppPromocoesGamer.API.Controllers
                 var htmlDoc = new HtmlDocument();
                 htmlDoc.LoadHtml(html);
 
-                var host = new Uri(url).Host.Replace("www.", "").ToLower();
-                var partes = host.Split('.');
+                if (!apenasPreco)
+                {
+                    // Extrai o nome do site
+                    var host = new Uri(url).Host.Replace("www.", "").ToLower();
+                    var partes = host.Split('.');
+                    var sufixosCompostos = new[] { "com.br", "org.br", "net.br", "gov.br" };
+                    var dominioFinal = string.Join('.', partes.Skip(partes.Length - 2));
+                    if (sufixosCompostos.Contains(dominioFinal) && partes.Length >= 3)
+                    {
+                        siteVendedor = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(partes[partes.Length - 3]);
+                    }
+                    else if (partes.Length >= 2)
+                    {
+                        siteVendedor = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(partes[partes.Length - 2]);
+                    }
+                    else
+                    {
+                        siteVendedor = host;
+                    }
 
-                var sufixosCompostos = new[] { "com.br", "org.br", "net.br", "gov.br" };
-                var dominioFinal = string.Join('.', partes.Skip(partes.Length - 2));
-                if (sufixosCompostos.Contains(dominioFinal) && partes.Length >= 3)
-                {
-                    siteVendedor = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(partes[partes.Length - 3]);
-                }
-                else if (partes.Length >= 2)
-                {
-                    siteVendedor = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(partes[partes.Length - 2]);
-                }
-                else
-                {
-                    siteVendedor = host;
+                    // Extrai o título
+                    var tituloNode = htmlDoc.DocumentNode.SelectSingleNode("//span[@id='productTitle']");
+                    if (tituloNode != null)
+                    {
+                        titulo = WebUtility.HtmlDecode(tituloNode.InnerText.Trim());
+                    }
+                    else
+                    {
+                        falhas.Add("Não foi possível extrair o título.");
+                    }
+
+                    // Extrai a imagem
+                    var imagemNode = htmlDoc.DocumentNode.SelectSingleNode("//img[@id='landingImage']") ?? htmlDoc.DocumentNode.SelectSingleNode("//img[@data-old-hires]");
+                    if (imagemNode != null)
+                    {
+                        imagemUrl = imagemNode.GetAttributeValue("src", null);
+                    }
+                    else
+                    {
+                        falhas.Add("Não foi possível extrair a imagem.");
+                    }
                 }
 
-                var tituloNode = htmlDoc.DocumentNode.SelectSingleNode("//span[@id='productTitle']");
-                if (tituloNode != null)
-                {
-                    var tituloCompleto = WebUtility.HtmlDecode(tituloNode.InnerText.Trim());
-                    titulo = tituloCompleto;
-                }
-                else
-                {
-                    falhas.Add("Não foi possível extrair o título.");
-                }
-
-
+                // Extrai o preço
                 string precoTexto = null;
                 var precoNode = htmlDoc.DocumentNode.SelectSingleNode("//span[@class='a-offscreen']") ?? htmlDoc.DocumentNode.SelectSingleNode("//span[contains(@class,'a-price-whole')]");
                 if (precoNode != null)
@@ -133,16 +140,6 @@ namespace AppPromocoesGamer.API.Controllers
                 {
                     falhas.Add("Não foi possível extrair o preço.");
                 }
-
-                var imagemNode = htmlDoc.DocumentNode.SelectSingleNode("//img[@id='landingImage']") ?? htmlDoc.DocumentNode.SelectSingleNode("//img[@data-old-hires]");
-                if (imagemNode != null)
-                {
-                    imagemUrl = imagemNode.GetAttributeValue("src", null);
-                }
-                else
-                {
-                    falhas.Add("Não foi possível extrair a imagem.");
-                }
             }
             catch (Exception ex)
             {
@@ -151,9 +148,6 @@ namespace AppPromocoesGamer.API.Controllers
 
             return (titulo, imagemUrl, preco, siteVendedor, falhas);
         }
-
-
-
 
         public static class CategoriasGamer
         {
@@ -228,8 +222,6 @@ namespace AppPromocoesGamer.API.Controllers
 
             var user = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == userEmail);
 
-            if (user.IsAdmin)
-                return StatusCode(403, new { mensagem = "Administradores não podem cadastrar promoções." });
 
             if (string.IsNullOrWhiteSpace(dto.UrlPromocao))
                 return BadRequest(new { mensagem = "A URL da promoção não pode estar vazia." });
@@ -326,9 +318,52 @@ namespace AppPromocoesGamer.API.Controllers
         [HttpGet("Feed")]
         public async Task<IActionResult> ListarFeed([FromQuery] string? titulo)
         {
+            // Buscar todas as promoções ativas para verificar preços
+            var promocoesAtivas = await _context.Promocoes
+                .Where(p => p.StatusPublicacao == true)
+                .ToListAsync();
+
+            // Lista para armazenar tarefas de extração de preços
+            var tarefas = new List<Task<(string, string, decimal, string, List<string>)>>();
+
+            // Para cada promoção ativa, chamar o scraper com apenasPreco = true
+            foreach (var promocao in promocoesAtivas)
+            {
+                tarefas.Add(ExtrairDadosDaUrl(promocao.Url, apenasPreco: true));
+            }
+
+            // Aguardar todas as chamadas de scraping
+            var resultados = await Task.WhenAll(tarefas);
+
+            // Processar resultados e atualizar o banco
+            for (int i = 0; i < promocoesAtivas.Count; i++)
+            {
+                var promocao = promocoesAtivas[i];
+                var (_, _, novoPreco, _, falhas) = resultados[i];
+
+                // Se não houve falhas na extração do preço
+                if (!falhas.Any())
+                {
+                    if (novoPreco > promocao.Preco)
+                    {
+                        // Inativar a promoção se o novo preço for maior
+                        promocao.StatusPublicacao = false;
+                    }
+                    else if (novoPreco < promocao.Preco)
+                    {
+                        // Atualizar o preço se for menor
+                        promocao.Preco = novoPreco;
+                    }
+                }
+            }
+
+            // Salvar alterações no banco
+            await _context.SaveChangesAsync();
+
+            // Agora, executar a query para listar as promoções
             var query = _context.Promocoes
                 .Include(p => p.Usuario)
-                .Where(p => p.StatusPublicacao);
+                .Where(p => p.StatusPublicacao == true); // Listar apenas promoções ativas
 
             if (!string.IsNullOrEmpty(titulo))
             {
@@ -374,7 +409,7 @@ namespace AppPromocoesGamer.API.Controllers
 
 
         [HttpGet("Feed/{id}")]
-        public async Task<IActionResult> FindPromo(int id)  
+        public async Task<IActionResult> FindPromo(int id)
         {
             var promocao = await _context.Promocoes
                 .Include(p => p.Usuario)
@@ -385,6 +420,7 @@ namespace AppPromocoesGamer.API.Controllers
             if (promocao == null)
                 return NotFound();
 
+           
             var result = new PromocaoFeedDTO
             {
                 Id = promocao.Id,
@@ -395,26 +431,16 @@ namespace AppPromocoesGamer.API.Controllers
                 ImagemUrl = promocao.ImagemUrl,
                 CreatedAt = promocao.CreatedAt,
                 UsuarioNome = promocao.Usuario.UsuarioNome,
-                Comentarios = promocao.Comentarios.Select(c => new ComentarioDTO
+                Comentarios = promocao.Comentarios.Select(c => new ComentarioCreateDTO
                 {
                     Id = c.Id,
                     ComentarioTexto = c.ComentarioTexto,
                     DataComentario = c.DataComentario,
-                    IsDono = c.IsDono,
                     UsuarioNome = c.Usuario.UsuarioNome
                 }).ToList()
             };
 
             return Ok(result);
-        }
-
-        public class ComentarioDTO
-        {
-            public int Id { get; set; }
-            public string ComentarioTexto { get; set; }
-            public DateTime DataComentario { get; set; }
-            public bool IsDono { get; set; }
-            public string UsuarioNome { get; set; }
         }
 
         [HttpPost("Feed/{id}/like")]
@@ -521,8 +547,6 @@ namespace AppPromocoesGamer.API.Controllers
             if (!User.Identity.IsAuthenticated)
                 return Unauthorized("Usuário não autenticado.");
 
-            bool usuarioEhAdmin = UsuarioEhAdmin();
-
             var promocao = await _context.Promocoes.FindAsync(id);
             if (promocao == null)
                 return NotFound("Promoção não encontrada.");
@@ -531,11 +555,6 @@ namespace AppPromocoesGamer.API.Controllers
 
             if (usuarioLogado == null)
                 return Unauthorized("Usuário não encontrado.");
-
-            if (!usuarioEhAdmin && promocao.UsuarioId != usuarioLogado.Id)
-            {
-                return Forbid("Você não tem permissão para excluir esta promoção.");
-            }
 
             _context.Promocoes.Remove(promocao);
             await _context.SaveChangesAsync();

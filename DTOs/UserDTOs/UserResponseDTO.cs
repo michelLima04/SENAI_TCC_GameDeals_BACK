@@ -6,7 +6,6 @@
         public string NomeSobrenome { get; set; }
         public string UsuarioNome { get; set; }
         public string Email { get; set; }
-        public bool IsAdmin { get; set; }
         public DateTime CriadoEm { get; set; }
         public int Contribuicoes { get; set; }  
 
