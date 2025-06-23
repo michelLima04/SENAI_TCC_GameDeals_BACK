@@ -27,6 +27,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<OperacaoLogService>();
 
+builder.Services.AddHostedService<VerificadorDePromocoesService>();
+builder.Services.AddScoped<ScraperService>();
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

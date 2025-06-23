@@ -215,7 +215,7 @@ namespace AppPromocoesGamer.API.Controllers
 
             var valid_promo = await _context.Promocoes.FirstOrDefaultAsync(u => u.Url == dto.UrlPromocao);
 
-            if (valid_promo != null && (valid_promo.StatusPublicacao || valid_promo.Url != ""))
+            if (valid_promo != null && (valid_promo.StatusPublicacao != 1 || valid_promo.Url != ""))
             {
                 return BadRequest(new { mensagem = "Já contém uma promoção em andamento." });
             }
@@ -287,7 +287,7 @@ namespace AppPromocoesGamer.API.Controllers
                 TempoPostado = DateTime.Now.TimeOfDay,
                 Cupom = dto.Cupom,
                 ImagemUrl = imagemUrl,
-                StatusPublicacao = true
+                StatusPublicacao = 1
             };
 
             if (dto.isAdd)
@@ -318,52 +318,10 @@ namespace AppPromocoesGamer.API.Controllers
         [HttpGet("Feed")]
         public async Task<IActionResult> ListarFeed([FromQuery] string? titulo)
         {
-            // Buscar todas as promoções ativas para verificar preços
-            var promocoesAtivas = await _context.Promocoes
-                .Where(p => p.StatusPublicacao == true)
-                .ToListAsync();
-
-            // Lista para armazenar tarefas de extração de preços
-            var tarefas = new List<Task<(string, string, decimal, string, List<string>)>>();
-
-            // Para cada promoção ativa, chamar o scraper com apenasPreco = true
-            foreach (var promocao in promocoesAtivas)
-            {
-                tarefas.Add(ExtrairDadosDaUrl(promocao.Url, apenasPreco: true));
-            }
-
-            // Aguardar todas as chamadas de scraping
-            var resultados = await Task.WhenAll(tarefas);
-
-            // Processar resultados e atualizar o banco
-            for (int i = 0; i < promocoesAtivas.Count; i++)
-            {
-                var promocao = promocoesAtivas[i];
-                var (_, _, novoPreco, _, falhas) = resultados[i];
-
-                // Se não houve falhas na extração do preço
-                if (!falhas.Any())
-                {
-                    if (novoPreco > promocao.Preco)
-                    {
-                        // Inativar a promoção se o novo preço for maior
-                        promocao.StatusPublicacao = false;
-                    }
-                    else if (novoPreco < promocao.Preco)
-                    {
-                        // Atualizar o preço se for menor
-                        promocao.Preco = novoPreco;
-                    }
-                }
-            }
-
-            // Salvar alterações no banco
-            await _context.SaveChangesAsync();
-
             // Agora, executar a query para listar as promoções
             var query = _context.Promocoes
                 .Include(p => p.Usuario)
-                .Where(p => p.StatusPublicacao == true); // Listar apenas promoções ativas
+                .Where(p => p.StatusPublicacao == 1); // Listar apenas promoções ativas
 
             if (!string.IsNullOrEmpty(titulo))
             {
@@ -383,28 +341,12 @@ namespace AppPromocoesGamer.API.Controllers
                     p.CreatedAt,
                     UsuarioNome = p.Usuario.UsuarioNome,
                     QuantidadeComentarios = _context.Comentarios.Count(c => c.IdPromocao == p.Id),
-                    QuantidadeCurtidas = _context.Curtidas.Count(c => c.id_promocao == p.Id)
+                    QuantidadeCurtidas = _context.Curtidas.Count(c => c.id_promocao == p.Id),
+                    TempoDecorrido = CalcularTempoDecorrido(p.CreatedAt)
                 })
                 .ToListAsync();
 
-            var promocoesComTempo = promocoes
-                .Select(p => new
-                {
-                    p.Id,
-                    p.Titulo,
-                    p.Preco,
-                    p.Cupom,
-                    p.ImagemUrl,
-                    p.Site,
-                    p.TempoPostado,
-                    p.UsuarioNome,
-                    p.QuantidadeComentarios,
-                    p.QuantidadeCurtidas,
-                    TempoDecorrido = CalcularTempoDecorrido(p.CreatedAt)
-                })
-                .ToList();
-
-            return Ok(promocoesComTempo);
+            return Ok(promocoes);
         }
 
 
@@ -520,7 +462,7 @@ namespace AppPromocoesGamer.API.Controllers
             var nomeProdutoNormalizado = RemoverAcentos(nomeProduto);
 
             var promocoesEncontradas = await _context.Promocoes
-               .Where(p => p.StatusPublicacao)
+               .Where(p => p.StatusPublicacao == 1)
                 .Select(p => new
                 {
                     p.Id,

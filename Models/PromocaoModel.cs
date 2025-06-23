@@ -34,7 +34,7 @@ namespace GameDeals.API.Models
         public TimeSpan? TempoPostado { get; set; }
 
         [Column("status_publicacao")]
-        public bool StatusPublicacao { get; set; } = false;
+        public int StatusPublicacao { get; set; } = 1;
 
         [Column("motivo_inativacao")]
         public string? MotivoInativacao { get; set; }

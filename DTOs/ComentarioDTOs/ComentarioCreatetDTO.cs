@@ -8,5 +8,7 @@
         public DateTime DataComentario { get; set; }
 
         public string UsuarioNome { get; set; }
+
+        public int IdPromocao { get; set; }
     }
 }

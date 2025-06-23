@@ -15,5 +15,6 @@ namespace GameDeals.DTOs.PromocaoDTOs
         public DateTime CreatedAt { get; set; }
         public string UsuarioNome { get; set; }
         public List<ComentarioCreateDTO> Comentarios { get; set; }
+
     }
 }

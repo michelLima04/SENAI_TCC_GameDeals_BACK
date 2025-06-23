@@ -34,7 +34,7 @@ namespace GameDeals.API.Controllers
                 .FirstOrDefaultAsync(u => u.Email == emailUsuario);
 
             var promocao = await _context.Promocoes
-                .FirstOrDefaultAsync(p => p.Id == dto.Id && p.StatusPublicacao == true);
+                .FirstOrDefaultAsync(p => p.Id == dto.IdPromocao && p.StatusPublicacao == 1);
 
             if (promocao == null)
                 return NotFound(new { mensagem = "Promoção não encontrada ou ainda não foi publicada." });
@@ -44,7 +44,7 @@ namespace GameDeals.API.Controllers
                 ComentarioTexto = dto.ComentarioTexto,
                 DataComentario = DateTime.Now,
                 IdUsuario = usuario.Id,
-                IdPromocao = dto.Id,
+                IdPromocao = dto.IdPromocao,
             };
 
             _context.Comentarios.Add(comentario);
