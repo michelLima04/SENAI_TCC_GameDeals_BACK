@@ -6,6 +6,11 @@ using System.Text.RegularExpressions;
 public class ScraperService
 {
     public async Task<(string titulo, string imagemUrl, decimal preco, string siteVendedor, List<string> falhas)>
+
+    // O "Scrapper" ou também chamado de "Web Scraping" é um programa/serviço que acessa páginas web, via url,
+    // que tem a função de coletar dados acessando diretamente o código HTML da página que ele acessar.
+
+    // Metódo para o Scrapper extrair os dados da URL fornecida pelo usuário
     ExtrairDadosDaUrl(string url, bool apenasPreco = false)
     {
         var falhas = new List<string>();

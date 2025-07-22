@@ -1,8 +1,7 @@
-﻿namespace GameDeals.DTOs.PromocaoDTOs
+﻿
+// Variável para definir a quantidade de Curtidas de uma Promoção
+public class LikeFeedDTO
 {
-    public class LikeFeedDTO
-    {
-        public int PromoId { get; set; }
-
-    }
+    public int PromoId { get; set; }
 }
+

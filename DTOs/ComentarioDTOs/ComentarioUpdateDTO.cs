@@ -1,8 +1,7 @@
-﻿namespace GameDeals.API.DTOs
+﻿
+// Variáveis usadas para Atualizar um Comentário
+public class ComentarioUpdateDTO
 {
-    public class ComentarioUpdateDTO
-    {
-        public int Id { get; set; }
-        public string ComentarioTexto { get; set; }
-    }
+    public int Id { get; set; }
+    public string ComentarioTexto { get; set; }
 }

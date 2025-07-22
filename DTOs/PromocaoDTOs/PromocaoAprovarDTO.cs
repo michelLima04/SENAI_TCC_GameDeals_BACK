@@ -1,8 +1,7 @@
-﻿namespace GameDeals.DTOs.PromocaoDTOs
+﻿
+// Variável usada para definir o Status das Promoções
+public class PromocaoAprovarDTO
 {
-    public class PromocaoAprovarDTO
-    {
-        public bool StatusPublicacao { get; set; }
-
-    }
+    public bool StatusPublicacao { get; set; }
 }
+

@@ -1,17 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using GameDeals.API.Data;
 using GameDeals.API.Models;
-using GameDeals.API.DTOs;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 using System.Globalization;
-using GameDeals.DTOs.PromocaoDTOs;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
-using System.Threading.Tasks;
-using System.Linq;
-using Newtonsoft.Json;
 using System.Text;
 using System.Net;
 using Microsoft.AspNetCore.Authorization;
@@ -33,17 +26,11 @@ namespace AppPromocoesGamer.API.Controllers
             _context = context;
             _httpContextAccessor = httpContextAccessor;
             _logService = logService;
-
-        }
-
-        private int ObterUsuarioId()
-        {
-            var emailLogado = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name || c.Type == "email")?.Value;
-            var usuarioLogado = _context.Usuarios.FirstOrDefault(u => u.Email == emailLogado);
-            return usuarioLogado?.Id ?? 0;
         }
 
         private async Task<(string titulo, string imagemUrl, decimal preco, string siteVendedor, List<string> falhas)>
+
+        // Método para extrair os dados de uma Url (Scrapper) para o cadastro de uma promoção
         ExtrairDadosDaUrl(string url, bool apenasPreco = false)
         {
             var falhas = new List<string>();
@@ -63,7 +50,7 @@ namespace AppPromocoesGamer.API.Controllers
 
                 if (!apenasPreco)
                 {
-                    // Extrai o nome do site
+                    // Extrair nome do Domínio, por exemplo "Amazon"
                     var host = new Uri(url).Host.Replace("www.", "").ToLower();
                     var partes = host.Split('.');
                     var sufixosCompostos = new[] { "com.br", "org.br", "net.br", "gov.br" };
@@ -81,7 +68,7 @@ namespace AppPromocoesGamer.API.Controllers
                         siteVendedor = host;
                     }
 
-                    // Extrai o título
+                    // Extrair título do produto
                     var tituloNode = htmlDoc.DocumentNode.SelectSingleNode("//span[@id='productTitle']");
                     if (tituloNode != null)
                     {
@@ -92,7 +79,7 @@ namespace AppPromocoesGamer.API.Controllers
                         falhas.Add("Não foi possível extrair o título.");
                     }
 
-                    // Extrai a imagem
+                    // Extrair imagem do produto
                     var imagemNode = htmlDoc.DocumentNode.SelectSingleNode("//img[@id='landingImage']") ?? htmlDoc.DocumentNode.SelectSingleNode("//img[@data-old-hires]");
                     if (imagemNode != null)
                     {
@@ -104,7 +91,7 @@ namespace AppPromocoesGamer.API.Controllers
                     }
                 }
 
-                // Extrai o preço
+                // Extrair preço atual do produto
                 string precoTexto = null;
                 var precoNode = htmlDoc.DocumentNode.SelectSingleNode("//span[@class='a-offscreen']") ?? htmlDoc.DocumentNode.SelectSingleNode("//span[contains(@class,'a-price-whole')]");
                 if (precoNode != null)
@@ -149,6 +136,7 @@ namespace AppPromocoesGamer.API.Controllers
             return (titulo, imagemUrl, preco, siteVendedor, falhas);
         }
 
+        // Lista de nomes de produtos do nicho Gamer para a validação posterior
         public static class CategoriasGamer
         {
             public static readonly string[] Lista = new[]
@@ -157,30 +145,30 @@ namespace AppPromocoesGamer.API.Controllers
                 "amd", "cooler", "cpu", "fontes", "gabinete", "gpu", "gtx", "intel", "placa mãe", "ram", "rtx", "ssd", "water cooler", "ryzen",
                 "hdd", "nvme", "m.2", "air cooler", "thermal pad", "pasta térmica", "ventoinha", "fan", "overclock", "liquid cooling",
                 "chipset", "threadripper", "core", "i9", "i7", "i5", "i3", "zen", "epyc", "raid", "sata", "pcie", "psu",
-                "fonte modular", "80 plus", "crossfire", "sli", "vrm", "heatsink", "radiador", "aio", "custom loop",
+                "fonte modular", "80 plus", "crossfire", "sli", "vrm", "heatsink", "radiador", "aio", "custom loop", "ddr1", "ddr2", "ddr3", "ddr4", "ddr5", "notebook", "laptop",
 
                 // Periféricos
                 "monitor", "cadeira", "controle", "fones", "headset", "microfone", "mouse", "mousepad", "rgb", "teclado",
                 "teclado mecânico", "teclado membrana", "switch cherry", "switch red", "switch blue", "switch brown",
-                "mouse óptico", "mouse laser", "dpi", "webcam", "ring light", "placa captura", "stream deck", "cabo hdmi",
-                "cabo displayport", "adaptador usb", "hub usb", "suporte monitor", "mesa gamer", "led strip",
+                "mouse óptico", "mouse laser", "dpi", "webcam", "ring light", "placa captura", "stream deck", "hdmi",
+                "cabo displayport", "adaptador usb", "usb", "suporte monitor", "mesa", "led",
                 "microfone condensador", "microfone dinâmico", "pop filter", "braço articulado", "gamepad", "joystick",
-                "trackball", "touchpad", "volante", "pedal", "teclado ergonômico",
+                "trackball", "touchpad", "volante", "pedal", "ergonômico",
 
                 // Realidade Virtual e Aumentada
                 "hololens", "htc", "vive", "vr", "óculos", "oculus", "quest", "rift", "valve index", "ar", "mixed reality",
                 "motion tracking", "controlador vr", "sensor vr", "base station", "vr headset",
 
-                // Consoles e Jogos
-                "nintendo", "ps4", "ps5", "xbox", "xbox series x", "xbox series s", "switch oled", "gamecube", "wii",
-                "playstation", "dualshock", "dualsense", "joy-con", "game pass", "playstation plus", "nintendo online",
+                // Consoles e Jogos 
+                "nintendo", "ps4", "ps5", "xbox", "xbox series x", "xbox series s", "switch", "gamecube", "wii",
+                "playstation", "dualshock", "dualsense", "joy-con", "game pass", "playstation plus", "online",
                 "digital", "física", "game", "games", "gamer", "gaming", "jogo", "jogos", "steam", "epic games", "battle.net",
                 "origin", "uplay", "retro", "emulador", "arcade", "mini console", "edicao", "padrao", 
 
                 // Streaming e Conectividade
                 "stream", "transmissão", "twitch", "youtube gaming", "obs", "streamlabs", "elgato", "green screen",
                 "chroma key", "câmera", "webcam 4k", "hub", "modem", "roteador", "switch", "wifi", "wifi 6", "mesh",
-                "extensor wifi", "powerline", "ethernet", "cabo rj45", "fibra óptica", "adaptador wireless", "dongle",
+                "extensor wifi", "powerline", "ethernet", "rj45", "fibra óptica", "wireless", "dongle",
 
                 // Armazenamento e Acessórios
                 "hd externo", "pen drive", "cartão sd", "cartão microsd", "nas", "servidor", "backup", "cloud storage",
@@ -202,6 +190,7 @@ namespace AppPromocoesGamer.API.Controllers
             };
         }
 
+        // Rota para Cadastrar uma promoção
         [HttpPost("Cadastrar")]
         [Authorize]
         public async Task<IActionResult> PostPromocao([FromBody] PromocaoCreateDTO dto)
@@ -215,13 +204,13 @@ namespace AppPromocoesGamer.API.Controllers
 
             var valid_promo = await _context.Promocoes.FirstOrDefaultAsync(u => u.Url == dto.UrlPromocao);
 
-            if (valid_promo != null && (valid_promo.StatusPublicacao != 1 || valid_promo.Url != ""))
+            if (valid_promo != null && (valid_promo.StatusPublicacao != true || valid_promo.Url != ""))
             {
                 return BadRequest(new { mensagem = "Já contém uma promoção em andamento." });
+                // Retorno para evitar postagens de promoções com a mesma Url
             }
 
             var user = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == userEmail);
-
 
             if (string.IsNullOrWhiteSpace(dto.UrlPromocao))
                 return BadRequest(new { mensagem = "A URL da promoção não pode estar vazia." });
@@ -230,10 +219,12 @@ namespace AppPromocoesGamer.API.Controllers
                 (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
             {
                 return BadRequest(new { mensagem = "A URL fornecida não é válida." });
+                // Retorno para validar se a Url é válida
             }
 
             var (tituloTemp, _, _, _, falhasTemp) = await ExtrairDadosDaUrl(dto.UrlPromocao);
 
+            // Metódo para pegar o título do produto para remover acentos e minimizar todos os caracteres, para afim de validar as palavras
             string RemoverAcentos(string texto)
             {
                 return new string(texto
@@ -248,6 +239,11 @@ namespace AppPromocoesGamer.API.Controllers
             int matchCount = CategoriasGamer.Lista
                 .Select(label => RemoverAcentos(label))
                 .Count(label => tituloNormalizado.Contains(label));
+            
+            // Para a verificação para validar se o produto é Gamer, optamos por fazer um contador
+            // que verifica cada palavra(string) presente no título do produto, para cada mesma palavra 
+            // que estiver presente na Lista de produtos Gamer ele irá pontuar ++1, quando este contador
+            // for == 2, consideramos que ele é um produto Gamer
 
             if (matchCount < 2)
             {
@@ -287,7 +283,7 @@ namespace AppPromocoesGamer.API.Controllers
                 TempoPostado = DateTime.Now.TimeOfDay,
                 Cupom = dto.Cupom,
                 ImagemUrl = imagemUrl,
-                StatusPublicacao = 1
+                StatusPublicacao = true
             };
 
             if (dto.isAdd)
@@ -315,13 +311,13 @@ namespace AppPromocoesGamer.API.Controllers
             });
         }
 
+        // Rota para listar todos os Produtos Ativos -> Feed na página Home
         [HttpGet("Feed")]
         public async Task<IActionResult> ListarFeed([FromQuery] string? titulo)
         {
-            // Agora, executar a query para listar as promoções
             var query = _context.Promocoes
                 .Include(p => p.Usuario)
-                .Where(p => p.StatusPublicacao == 1); // Listar apenas promoções ativas
+                .Where(p => p.StatusPublicacao == true); // Listar apenas promoções ativas
 
             if (!string.IsNullOrEmpty(titulo))
             {
@@ -338,6 +334,7 @@ namespace AppPromocoesGamer.API.Controllers
                     p.ImagemUrl,
                     p.Site,
                     p.TempoPostado,
+                    p.StatusPublicacao,
                     p.CreatedAt,
                     UsuarioNome = p.Usuario.UsuarioNome,
                     QuantidadeComentarios = _context.Comentarios.Count(c => c.IdPromocao == p.Id),
@@ -349,7 +346,7 @@ namespace AppPromocoesGamer.API.Controllers
             return Ok(promocoes);
         }
 
-
+        // Rota para entrar no Card de uma Promoção
         [HttpGet("Feed/{id}")]
         public async Task<IActionResult> FindPromo(int id)
         {
@@ -373,6 +370,7 @@ namespace AppPromocoesGamer.API.Controllers
                 ImagemUrl = promocao.ImagemUrl,
                 CreatedAt = promocao.CreatedAt,
                 UsuarioNome = promocao.Usuario.UsuarioNome,
+                Cupom = promocao.Cupom,
                 Comentarios = promocao.Comentarios.Select(c => new ComentarioCreateDTO
                 {
                     Id = c.Id,
@@ -385,6 +383,7 @@ namespace AppPromocoesGamer.API.Controllers
             return Ok(result);
         }
 
+        // Rota para Curtir uma Promoção
         [HttpPost("Feed/{id}/like")]
         [Authorize]
         public async Task<IActionResult> LikeFeed(int id)
@@ -453,6 +452,7 @@ namespace AppPromocoesGamer.API.Controllers
             return sb.ToString().ToLower();
         }
 
+        // Rota para Buscar uma Promoção a partir de uma palavra/string -> Barra de Pesquisa
         [HttpGet("Buscar")]
         public async Task<IActionResult> BuscarPromocoes([FromQuery] string nomeProduto)
         {
@@ -462,7 +462,7 @@ namespace AppPromocoesGamer.API.Controllers
             var nomeProdutoNormalizado = RemoverAcentos(nomeProduto);
 
             var promocoesEncontradas = await _context.Promocoes
-               .Where(p => p.StatusPublicacao == 1)
+               .Where(p => p.StatusPublicacao == true || p.StatusPublicacao == false)
                 .Select(p => new
                 {
                     p.Id,
@@ -472,6 +472,7 @@ namespace AppPromocoesGamer.API.Controllers
                     p.ImagemUrl,
                     p.Site,
                     p.TempoPostado,
+                    p.StatusPublicacao,
                     QuantidadeComentarios = _context.Comentarios.Count(c => c.IdPromocao == p.Id),
                     QuantidadeCurtidas = _context.Curtidas.Count(c => c.id_promocao == p.Id)
                 })
@@ -483,28 +484,7 @@ namespace AppPromocoesGamer.API.Controllers
             return Ok(promocoesEncontradas);
         }
 
-        [HttpDelete("Excluir/{id}")]
-        public async Task<IActionResult> ExcluirPromocao([FromRoute] int id)
-        {
-            if (!User.Identity.IsAuthenticated)
-                return Unauthorized("Usuário não autenticado.");
-
-            var promocao = await _context.Promocoes.FindAsync(id);
-            if (promocao == null)
-                return NotFound("Promoção não encontrada.");
-
-            var usuarioLogado = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == User.Identity.Name);
-
-            if (usuarioLogado == null)
-                return Unauthorized("Usuário não encontrado.");
-
-            _context.Promocoes.Remove(promocao);
-            await _context.SaveChangesAsync();
-
-            return Ok("Promoção excluída com sucesso.");
-        }
-
-
+        // Método para carcular há quanto tempo foi postado a Promoção do Produto
         private static string CalcularTempoDecorrido(DateTime createdAt)
         {
             var tempo = DateTime.Now - createdAt;
@@ -519,13 +499,13 @@ namespace AppPromocoesGamer.API.Controllers
             string resultado = "há ";
 
             if (dias > 0)
-                resultado += $"{dias} dia{(dias > 1 ? "s" : "")} ";
+                resultado += $"{dias}d ";
 
             if (horas > 0)
-                resultado += $"{horas} hora{(horas > 1 ? "s" : "")} ";
+                resultado += $"{horas}h ";
 
             if (minutos > 0)
-                resultado += $"{minutos} minuto{(minutos > 1 ? "s" : "")} ";
+                resultado += $"{minutos}min ";
 
             return resultado.Trim() + " atrás";
         }

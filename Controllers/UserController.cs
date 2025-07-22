@@ -2,7 +2,6 @@
 using System.Security.Claims;
 using System.Text;
 using GameDeals.API.Data;
-using GameDeals.API.DTOs;
 using GameDeals.API.Helpers;
 using GameDeals.API.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -18,15 +17,14 @@ namespace GameDeals.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
-        private readonly OperacaoLogService _logService;
 
         public UsuariosController(AppDbContext context, IConfiguration configuration, OperacaoLogService logService)
         {
             _context = context;
             _configuration = configuration;
-            _logService = logService;
         }
 
+        // Rota para fazer o Cadastro do Usuário
         [HttpPost("Registro")]
         public async Task<IActionResult> Register(UserRegisterDTO dto)
         {
@@ -45,14 +43,6 @@ namespace GameDeals.API.Controllers
             _context.Usuarios.Add(usuario);
             await _context.SaveChangesAsync();
 
-            await _logService.RegistrarAsync(
-                usuario.Id,
-                "Registro",
-                "Usuario",
-                usuario.Id,
-                $"Usuário '{usuario.UsuarioNome}' foi registrado."
-            );
-
             return Ok(new
             {
                 mensagem = "Usuário cadastrado com sucesso!",
@@ -68,6 +58,7 @@ namespace GameDeals.API.Controllers
             });
         }
 
+        // Rota para fazer o Login do Usuário
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] UserLoginDTO dto)
         {
@@ -100,20 +91,13 @@ namespace GameDeals.API.Controllers
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
-            await _logService.RegistrarAsync(
-                usuario.Id,
-                "Login",
-                "Usuario",
-                usuario.Id,
-                $"Usuário '{usuario.UsuarioNome}' fez login."
-            );
-
             return Ok(new
             {
                 token = tokenString
             });
         }
 
+        // Rota para editar dados do Usuário
         [Authorize]
         [HttpPut("Profile/editar")]
         public async Task<IActionResult> EditarPerfil([FromBody] EditarPerfilDTO dto)
@@ -130,18 +114,11 @@ namespace GameDeals.API.Controllers
             usuario.UsuarioNome = dto.UsuarioNome;
             usuario.Email = dto.Email;
 
-            await _logService.RegistrarAsync(
-                usuario.Id,
-                "EditarPerfil",
-                "Usuario",
-                usuario.Id,
-                $"Usuário '{usuario.UsuarioNome}' atualizou seu perfil."
-            );
-
             await _context.SaveChangesAsync();
             return Ok(new { message = "Perfil atualizado com sucesso" });
         }
 
+        // Rota para trocar a Senha do Usuário
         [Authorize]
         [HttpPut("Profile/trocar-senha")]
         public async Task<IActionResult> TrocarSenha([FromBody] TrocarSenhaDTO dto)
@@ -160,17 +137,10 @@ namespace GameDeals.API.Controllers
             usuario.Senha = PasswordHasher.Hash(dto.NovaSenha);
             await _context.SaveChangesAsync();
 
-            await _logService.RegistrarAsync(
-                usuario.Id,
-                "TrocarSenha",
-                "Usuario",
-                usuario.Id,
-                $"Usuário '{usuario.UsuarioNome}' alterou sua senha."
-            );
-
             return Ok(new { message = "Senha atualizada com sucesso" });
         }
 
+        // Rota para Listar os dados do Usuário -> Página de Perfil
         [Authorize]
         [HttpGet("Profile/me")]
         public async Task<IActionResult> ObterPerfil()
@@ -215,6 +185,7 @@ namespace GameDeals.API.Controllers
             });
         }
 
+        // Rota que atualiza o número de contribuições/postagens do Usuário
         [Authorize]
         [HttpPut("Profile/atualizar-contribuicoes")]
         public async Task<IActionResult> AtualizarContribuicoes()
@@ -234,8 +205,5 @@ namespace GameDeals.API.Controllers
 
             return Ok(new { message = "Contribuições atualizadas", total = totalPromocoes });
         }
-
-     
-
     }
 }

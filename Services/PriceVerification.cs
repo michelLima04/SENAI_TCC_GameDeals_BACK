@@ -9,11 +9,12 @@ using System.Linq;
 using System.Collections.Generic;
 using GameDeals.API.Data;
 
+// Serviço para Verificar o preço de todos os produtos do sistema, afim de atualizar o preço ou inativar uma promoção
 public class VerificadorDePromocoesService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<VerificadorDePromocoesService> _logger;
-    private readonly TimeSpan intervalo = TimeSpan.FromMinutes(5);
+    private readonly TimeSpan intervalo = TimeSpan.FromMinutes(5); // A cada 5 minutos a verificação, a partir que a API começar.
 
     public VerificadorDePromocoesService(IServiceProvider serviceProvider, ILogger<VerificadorDePromocoesService> logger)
     {
@@ -35,7 +36,7 @@ public class VerificadorDePromocoesService : BackgroundService
                 var scraper = scope.ServiceProvider.GetRequiredService<ScraperService>();
 
                 var promocoesAtivas = await _context.Promocoes
-                    .Where(p => p.StatusPublicacao == 1)
+                    .Where(p => p.StatusPublicacao == true)
                     .ToListAsync(stoppingToken);
 
                 var tarefas = new List<Task<(string, string, decimal, string, List<string>)>>();
@@ -43,6 +44,7 @@ public class VerificadorDePromocoesService : BackgroundService
                 foreach (var promocao in promocoesAtivas)
                 {
                     tarefas.Add(scraper.ExtrairDadosDaUrl(promocao.Url, apenasPreco: true));
+                    // Método do Scrapper para verificar apenas o preço dos produtos Ativos
                 }
 
                 var resultados = await Task.WhenAll(tarefas);
@@ -56,11 +58,14 @@ public class VerificadorDePromocoesService : BackgroundService
                     {
                         if (novoPreco > promocao.Preco)
                         {
-                            promocao.StatusPublicacao = 0;
+                            // Se o preço novo for MAIOR que o preço antigo, a promoção será inativada.
+                            promocao.StatusPublicacao = false;
+                            promocao.MotivoInativacao = "Alteração de preço - Aumentou!";
                         }
                         else if (novoPreco < promocao.Preco)
                         {
                             promocao.Preco = novoPreco;
+                            // Se o preço novo for MENOR ao preço antigo, o preço será atualizado.
                         }
                     }
                 }

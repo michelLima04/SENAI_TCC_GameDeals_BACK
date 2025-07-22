@@ -34,7 +34,7 @@ namespace GameDeals.API.Models
         public TimeSpan? TempoPostado { get; set; }
 
         [Column("status_publicacao")]
-        public int StatusPublicacao { get; set; } = 1;
+        public bool StatusPublicacao { get; set; }
 
         [Column("motivo_inativacao")]
         public string? MotivoInativacao { get; set; }
@@ -48,9 +48,7 @@ namespace GameDeals.API.Models
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-
         public List<Comentario> Comentarios { get; set; } = new();
-
 
     }
 }

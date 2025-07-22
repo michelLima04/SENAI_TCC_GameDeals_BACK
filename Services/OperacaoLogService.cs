@@ -2,6 +2,7 @@
 using GameDeals.API.Models;
 using System.Threading.Tasks;
 
+// Serviço que registra todas as atividades do usuário no sistema
 public class OperacaoLogService
 {
     private readonly AppDbContext _context;

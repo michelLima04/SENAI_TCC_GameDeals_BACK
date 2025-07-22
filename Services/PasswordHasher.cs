@@ -1,6 +1,8 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
+// Serviço para Hashear/criptografar a senha do Usuário
+
 namespace GameDeals.API.Helpers
 {
     public static class PasswordHasher

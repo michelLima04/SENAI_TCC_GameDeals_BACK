@@ -2,8 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using GameDeals.API.Data;
 using GameDeals.API.Models;
-using GameDeals.API.DTOs;
-using Microsoft.AspNetCore.Authorization;
 
 namespace GameDeals.API.Controllers
 {
@@ -13,15 +11,14 @@ namespace GameDeals.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly OperacaoLogService _logService;
 
         public ComentarioController(AppDbContext context, IHttpContextAccessor httpContextAccessor, OperacaoLogService logService)
         {
             _context = context;
             _httpContextAccessor = httpContextAccessor;
-            _logService = logService;
         }
 
+        // Rota para Criar um Comentário
         [HttpPost("Cadastrar")]
         public async Task<IActionResult> CadastrarComentario([FromBody] ComentarioCreateDTO dto)
         {
@@ -34,7 +31,7 @@ namespace GameDeals.API.Controllers
                 .FirstOrDefaultAsync(u => u.Email == emailUsuario);
 
             var promocao = await _context.Promocoes
-                .FirstOrDefaultAsync(p => p.Id == dto.IdPromocao && p.StatusPublicacao == 1);
+                .FirstOrDefaultAsync(p => p.Id == dto.IdPromocao && p.StatusPublicacao == true);
 
             if (promocao == null)
                 return NotFound(new { mensagem = "Promoção não encontrada ou ainda não foi publicada." });
@@ -50,14 +47,6 @@ namespace GameDeals.API.Controllers
             _context.Comentarios.Add(comentario);
             await _context.SaveChangesAsync();
 
-            await _logService.RegistrarAsync(
-                usuario.Id,
-                "Criou Comentário",
-                "Comentario",
-                comentario.Id,
-                dto.ComentarioTexto
-            );
-
             return Ok(new
             {
                 mensagem = "Comentário cadastrado com sucesso.",
@@ -69,6 +58,7 @@ namespace GameDeals.API.Controllers
             });
         }
 
+        // Rota para Alterar um Comentário
         [HttpPut("Alterar")]
         public async Task<IActionResult> AlterarComentario([FromBody] ComentarioUpdateDTO dto)
         {
@@ -96,14 +86,6 @@ namespace GameDeals.API.Controllers
             _context.Comentarios.Update(comentario);
             await _context.SaveChangesAsync();
 
-            await _logService.RegistrarAsync(
-                usuario.Id,
-                "Alterou Comentário",
-                "Comentario",
-                comentario.Id,
-                dto.ComentarioTexto
-            );
-
             return Ok(new
             {
                 mensagem = "Comentário alterado com sucesso.",
@@ -113,6 +95,7 @@ namespace GameDeals.API.Controllers
             });
         }
 
+        // Rota para Excluir um comentário
         [HttpDelete("Deletar/{id}")]
         public async Task<IActionResult> DeletarComentario(int id)
         {
@@ -132,14 +115,6 @@ namespace GameDeals.API.Controllers
 
             _context.Comentarios.Remove(comentario);
             await _context.SaveChangesAsync();
-
-            await _logService.RegistrarAsync(
-                usuario.Id,
-                "Deletou Comentário",
-                "Comentario",
-                comentario.Id,
-                comentario.ComentarioTexto
-            );
 
             return Ok(new { mensagem = "Comentário deletado com sucesso." });
         }
