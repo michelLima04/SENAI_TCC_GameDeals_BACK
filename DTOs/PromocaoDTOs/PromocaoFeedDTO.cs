@@ -13,4 +13,8 @@ public class PromocaoFeedDTO
     public string Cupom { get; set; }
     public List<ComentarioCreateDTO> Comentarios { get; set; }
 
+    public int Likes { get; set; }
+    public bool IsLiked { get; set; }
+
+
 }

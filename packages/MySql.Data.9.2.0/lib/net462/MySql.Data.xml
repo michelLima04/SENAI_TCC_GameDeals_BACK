@@ -17123,7 +17123,8 @@
             @code{unparsed}
             document_path: path_item | path_item document_path
             path_item    : member | array_index | "**"
-            member       : "." string | "." "*"
+            member       : "." string | ".
+			*"
             array_index  : "[" number "]" | "[" "*" "]"
             @endcode
              </summary>

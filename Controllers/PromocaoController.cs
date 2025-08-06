@@ -9,7 +9,8 @@ using System.Text;
 using System.Net;
 using Microsoft.AspNetCore.Authorization;
 using GameDeals.Models;
-
+using GameDeals.DTOs.PromocaoDTOs;
+using System.Security.Claims;
 
 namespace AppPromocoesGamer.API.Controllers
 {
@@ -20,6 +21,7 @@ namespace AppPromocoesGamer.API.Controllers
         private readonly AppDbContext _context;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly OperacaoLogService _logService;
+        private IEnumerable<string> testc;
 
         public PromocaoController(AppDbContext context, IHttpContextAccessor httpContextAccessor, OperacaoLogService logService)
         {
@@ -142,52 +144,50 @@ namespace AppPromocoesGamer.API.Controllers
             public static readonly string[] Lista = new[]
             {
                 // Hardware (PC e componentes)
-                "amd", "cooler", "cpu", "fontes", "gabinete", "gpu", "gtx", "intel", "placa mãe", "ram", "rtx", "ssd", "water cooler", "ryzen",
-                "hdd", "nvme", "m.2", "air cooler", "thermal pad", "pasta térmica", "ventoinha", "fan", "overclock", "liquid cooling",
+                "amd", "cooler", "cpu", "fontes", "gabinete", "gpu", "gtx", "intel", "placa", "mãe", "ram", "rtx", "ssd", "water", "ryzen",
+                "hdd", "nvme", "m.2", "air", "thermal", "pad", "pasta", "térmica", "ventoinha", "fan", "overclock", "cooling",
                 "chipset", "threadripper", "core", "i9", "i7", "i5", "i3", "zen", "epyc", "raid", "sata", "pcie", "psu",
-                "fonte modular", "80 plus", "crossfire", "sli", "vrm", "heatsink", "radiador", "aio", "custom loop", "ddr1", "ddr2", "ddr3", "ddr4", "ddr5", "notebook", "laptop",
+                "fonte", "modular", "80", "plus", "crossfire", "sli", "vrm", "heatsink", "radiador", "aio", "custom", "loop",
+                "ddr1", "ddr2", "ddr3", "ddr4", "ddr5", "notebook", "laptop",
 
                 // Periféricos
                 "monitor", "cadeira", "controle", "fones", "headset", "microfone", "mouse", "mousepad", "rgb", "teclado",
-                "teclado mecânico", "teclado membrana", "switch cherry", "switch red", "switch blue", "switch brown",
-                "mouse óptico", "mouse laser", "dpi", "webcam", "ring light", "placa captura", "stream deck", "hdmi",
-                "cabo displayport", "adaptador usb", "usb", "suporte monitor", "mesa", "led",
-                "microfone condensador", "microfone dinâmico", "pop filter", "braço articulado", "gamepad", "joystick",
-                "trackball", "touchpad", "volante", "pedal", "ergonômico",
+                "mecânico", "membrana", "switch", "óptico", "laser", "dpi", "webcam", "ring", "light", "captura",
+                "hdmi", "displayport", "usb", "suporte", "mesa", "led", "condensador", "dinâmico", "pop", "filter",
+                "articulado", "gamepad", "joystick", "trackball", "touchpad", "volante", "pedal", "ergonômico",
 
                 // Realidade Virtual e Aumentada
-                "hololens", "htc", "vive", "vr", "óculos", "oculus", "quest", "rift", "valve index", "ar", "mixed reality",
-                "motion tracking", "controlador vr", "sensor vr", "base station", "vr headset",
+                "hololens", "htc", "vive", "vr", "óculos", "oculus", "quest", "rift", "valve", "index", "ar", "mixed",
+                "reality", "motion", "tracking", "controlador", "sensor", "base", "station", "headset",
 
                 // Consoles e Jogos 
-                "nintendo", "ps4", "ps5", "xbox", "xbox series x", "xbox series s", "switch", "gamecube", "wii",
-                "playstation", "dualshock", "dualsense", "joy-con", "game pass", "playstation plus", "online",
-                "digital", "física", "game", "games", "gamer", "gaming", "jogo", "jogos", "steam", "epic games", "battle.net",
-                "origin", "uplay", "retro", "emulador", "arcade", "mini console", "edicao", "padrao", 
+                "nintendo", "ps4", "ps5", "4", "5", "xbox", "series", "one", "switch", "gamecube", "wii",
+                "playstation", "dualshock", "dualsense", "joy-con", "game", "pass", "plus", "online",
+                "digital", "física", "games", "gamer", "gaming", "jogo", "jogos", "steam", "epic", "battle", "net",
+                "origin", "uplay", "retro", "emulador", "arcade", "console", "edicao", "padrao", 
 
                 // Streaming e Conectividade
-                "stream", "transmissão", "twitch", "youtube gaming", "obs", "streamlabs", "elgato", "green screen",
-                "chroma key", "câmera", "webcam 4k", "hub", "modem", "roteador", "switch", "wifi", "wifi 6", "mesh",
-                "extensor wifi", "powerline", "ethernet", "rj45", "fibra óptica", "wireless", "dongle",
+                "stream", "transmissão", "twitch", "youtube", "obs", "streamlabs", "elgato", "green", "screen",
+                "chroma", "key", "câmera", "hub", "modem", "roteador", "wifi", "mesh", "extensor",
+                "powerline", "ethernet", "rj45", "fibra", "óptica", "wireless", "dongle",
 
                 // Armazenamento e Acessórios
-                "hd externo", "pen drive", "cartão sd", "cartão microsd", "nas", "servidor", "backup", "cloud storage",
-                "case ssd", "docking station", "cabo", "organizador", "suporte", "cabo management", "tie wrap",
-                "adaptador sata", "adaptador nvme", "drive óptico", "leitor de cartão",
+                "hd", "externo", "pen", "drive", "cartão", "sd", "microsd", "nas", "servidor", "backup", "cloud", "storage",
+                "case", "docking", "station", "cabo", "organizador", "management", "tie", "wrap", "leitor",
 
                 // Outros (Estilo e Conforto Gamer)
-                "frigobar", "gaming", "reddragon", "razer", "logitech", "hyperx", "corsair", "steelseries", "asus rog",
-                "msi", "gigabyte", "nzxt", "thermaltake", "cooler master", "alienware", "acer predator", "lenovo legion",
-                "hp omen", "deskmat", "luz ambiente", "painel led", "setup gamer", "customização", "skins", "adesivo gamer",
-                "cooling pad", "estação de recarga", "bateria externa", "tapete ergonômico", "suporte headset",
-                "almofada gamer", "ventilador portátil", "purificador de ar",
+                "frigobar", "reddragon", "razer", "logitech", "hyperx", "corsair", "steelseries", "asus", "rog",
+                "msi", "gigabyte", "nzxt", "thermaltake", "alienware", "acer", "predator", "lenovo", "legion",
+                "hp", "omen", "deskmat", "luz", "ambiente", "painel", "setup", "customização", "skins",
+                "recarga", "bateria", "suporte", "headset", "purificador", "ar",
 
                 // Tendências e Miscelânea
-                "esports", "battle royale", "open world", "rpg", "fps", "moba", "indie game", "cloud gaming", "ray tracing",
-                "dlss", "fsr", "4k", "8k", "120hz", "144hz", "240hz", "ultrawide", "curvo", "monitor portátil",
-                "smart glasses", "wearable", "tecnologia háptica", "feedback tátil", "crossplay", "modding",
-                "waterblock", "gpu cooler", "fan controller", "rgb controller", "smart home", "alexa", "google home"
+                "esports", "battle", "royale", "open", "world", "rpg", "fps", "moba", "indie", "cloud", "ray", "tracing",
+                "dlss", "fsr", "4k", "8k", "120", "144", "240", "hz", "ultrawide", "curvo", "portátil",
+                "smart", "glasses", "wearable", "tecnologia", "háptica", "tátil", "crossplay", "modding",
+                "waterblock", "controller", "alexa"
             };
+
         }
 
         // Rota para Cadastrar uma promoção
@@ -236,9 +236,13 @@ namespace AppPromocoesGamer.API.Controllers
 
             var tituloNormalizado = RemoverAcentos(tituloTemp ?? "");
 
-            int matchCount = CategoriasGamer.Lista
+            int matchCount = 0;
+
+            testc = CategoriasGamer.Lista.Select(label => RemoverAcentos(label));
+
+            matchCount = CategoriasGamer.Lista
                 .Select(label => RemoverAcentos(label))
-                .Count(label => tituloNormalizado.Contains(label));
+                .Count(label => tituloNormalizado.Split(" ").Contains(label));
             
             // Para a verificação para validar se o produto é Gamer, optamos por fazer um contador
             // que verifica cada palavra(string) presente no título do produto, para cada mesma palavra 
@@ -336,7 +340,7 @@ namespace AppPromocoesGamer.API.Controllers
                     p.TempoPostado,
                     p.StatusPublicacao,
                     p.CreatedAt,
-                    UsuarioNome = p.Usuario.UsuarioNome,
+                    p.Usuario.UsuarioNome,
                     QuantidadeComentarios = _context.Comentarios.Count(c => c.IdPromocao == p.Id),
                     QuantidadeCurtidas = _context.Curtidas.Count(c => c.id_promocao == p.Id),
                     TempoDecorrido = CalcularTempoDecorrido(p.CreatedAt)
@@ -359,7 +363,22 @@ namespace AppPromocoesGamer.API.Controllers
             if (promocao == null)
                 return NotFound();
 
-           
+            int quantidadeCurtidas = await _context.Curtidas.CountAsync(c => c.id_promocao == id);
+
+            // Verifica se o usuário está autenticado
+            var userEmail = User.Identity?.Name;
+            bool isLiked = false;
+
+            if (User.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(userEmail))
+            {
+                var user = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == userEmail);
+                if (user != null)
+                {
+                    isLiked = await _context.Curtidas
+                        .AnyAsync(c => c.id_promocao == id && c.id_usuario == user.Id);
+                }
+            }
+
             var result = new PromocaoFeedDTO
             {
                 Id = promocao.Id,
@@ -377,11 +396,14 @@ namespace AppPromocoesGamer.API.Controllers
                     ComentarioTexto = c.ComentarioTexto,
                     DataComentario = c.DataComentario,
                     UsuarioNome = c.Usuario.UsuarioNome
-                }).ToList()
+                }).ToList(),
+                Likes = quantidadeCurtidas,
+                IsLiked = isLiked
             };
 
             return Ok(result);
         }
+
 
         // Rota para Curtir uma Promoção
         [HttpPost("Feed/{id}/like")]
@@ -390,14 +412,14 @@ namespace AppPromocoesGamer.API.Controllers
         {
             try
             {
-                var userEmail = User.Identity.Name;
+                var userEmail = User.Identity?.Name;
 
-                if (!User.Identity.IsAuthenticated)
+                if (!User.Identity.IsAuthenticated || userEmail == null)
                 {
                     return Unauthorized("Token inválido ou expirado.");
                 }
 
-                var user = await _context.Usuarios.FirstOrDefaultAsync(c => c.Email == userEmail);
+                var user = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == userEmail);
                 if (user == null)
                 {
                     return NotFound("Usuário não encontrado.");
@@ -405,26 +427,37 @@ namespace AppPromocoesGamer.API.Controllers
 
                 int userId = user.Id;
 
-                bool jaCurtiu = await _context.Curtidas
-                    .AnyAsync(l => l.id_usuario == userId && l.id_promocao == id);
+                var curtidaExistente = await _context.Curtidas
+                    .FirstOrDefaultAsync(c => c.id_usuario == userId && c.id_promocao == id);
 
-                if (jaCurtiu)
+                if (curtidaExistente != null)
                 {
-                    return BadRequest("Você já curtiu esse post.");
+                    // Se curtiu: vamos remover (descurtir)
+                    _context.Curtidas.Remove(curtidaExistente);
+                    await _context.SaveChangesAsync();
+
+                    int novaQuantidade = await _context.Curtidas.CountAsync(c => c.id_promocao == id);
+
+                    return Ok(new
+                    {
+                        id = id,
+                        quantidadeCurtidas = novaQuantidade,
+                        jaCurtido = false
+                    });
                 }
 
-                var like = new Curtidas
+                // Ainda não curtiu: vamos adicionar
+                var novaCurtida = new Curtidas
                 {
                     id_usuario = userId,
                     id_promocao = id,
                     created_at = DateTime.UtcNow
                 };
 
-                _context.Curtidas.Add(like);
+                _context.Curtidas.Add(novaCurtida);
                 await _context.SaveChangesAsync();
 
-                int quantidadeCurtidas = await _context.Curtidas
-                    .CountAsync(c => c.id_promocao == id);
+                int quantidadeCurtidas = await _context.Curtidas.CountAsync(c => c.id_promocao == id);
 
                 return Ok(new
                 {
@@ -439,19 +472,6 @@ namespace AppPromocoesGamer.API.Controllers
             }
         }
 
-        private string RemoverAcentos(string texto)
-        {
-            var normalized = texto.Normalize(NormalizationForm.FormD);
-            var sb = new StringBuilder();
-            foreach (var c in normalized)
-            {
-                var uc = CharUnicodeInfo.GetUnicodeCategory(c);
-                if (uc != UnicodeCategory.NonSpacingMark)
-                    sb.Append(c);
-            }
-            return sb.ToString().ToLower();
-        }
-
         // Rota para Buscar uma Promoção a partir de uma palavra/string -> Barra de Pesquisa
         [HttpGet("Buscar")]
         public async Task<IActionResult> BuscarPromocoes([FromQuery] string nomeProduto)
@@ -459,10 +479,10 @@ namespace AppPromocoesGamer.API.Controllers
             if (string.IsNullOrWhiteSpace(nomeProduto))
                 return BadRequest(new { mensagem = "O nome do produto não pode estar vazio." });
 
-            var nomeProdutoNormalizado = RemoverAcentos(nomeProduto);
+            var nomeProdutoLower = nomeProduto.ToLower();
 
             var promocoesEncontradas = await _context.Promocoes
-               .Where(p => p.StatusPublicacao == true || p.StatusPublicacao == false)
+                .Where(p => p.StatusPublicacao == true && p.Titulo.ToLower().Contains(nomeProdutoLower))
                 .Select(p => new
                 {
                     p.Id,
@@ -473,6 +493,8 @@ namespace AppPromocoesGamer.API.Controllers
                     p.Site,
                     p.TempoPostado,
                     p.StatusPublicacao,
+                    p.Usuario.UsuarioNome,
+                    p.CreatedAt,
                     QuantidadeComentarios = _context.Comentarios.Count(c => c.IdPromocao == p.Id),
                     QuantidadeCurtidas = _context.Curtidas.Count(c => c.id_promocao == p.Id)
                 })
@@ -482,6 +504,61 @@ namespace AppPromocoesGamer.API.Controllers
                 return NotFound(new { mensagem = "Nenhuma promoção encontrada para o nome informado." });
 
             return Ok(promocoesEncontradas);
+        }
+
+
+        // Rota para Deletar uma Promoção, apenas o usuário criador da postagem pode prosseguir aqui
+        [HttpDelete("{id}")]
+        [Authorize]
+        public async Task<IActionResult> ExcluirPromocao(int id)
+        {
+            var userEmail = User.Identity.Name;
+
+            if (!User.Identity.IsAuthenticated)
+            {
+                return Unauthorized("Token inválido ou expirado.");
+            }
+
+            var user = await _context.Usuarios.FirstOrDefaultAsync(c => c.Email == userEmail);
+            if (user == null)
+            {
+                return NotFound("Usuário não encontrado.");
+            }
+
+            int usuarioId = user.Id;
+
+            var promocao = await _context.Promocoes.FindAsync(id);
+
+            if (promocao == null)
+            {
+                return NotFound(new { mensagem = "Promoção não encontrada." });
+            }
+
+            // Verifica se o usuário é o dono da promoção
+            if (promocao.UsuarioId != usuarioId)
+            {
+                return Forbid("Você só pode excluir suas próprias promoções.");
+            }
+
+            // Marca como inativa, sem remover do banco
+            promocao.StatusPublicacao = false;
+            promocao.MotivoInativacao = "Criador do post excluiu a publicação.";
+            promocao.TempoPostado = DateTime.Now.TimeOfDay;
+
+
+            // Salva as alterações no banco
+            await _context.SaveChangesAsync();
+
+            await _logService.RegistrarAsync(
+                    user.Id,
+                    "Exclusão",
+                    "Promocao",
+                    promocao.Id,
+                    $"Promoção '{promocao.Titulo}' excluída pelo usuário {user.UsuarioNome}."
+            );
+
+            promocao.MotivoInativacao = "Criador do post excluiu a publicação.";
+            return Ok(new { mensagem = "Promoção excluída com sucesso." });
         }
 
         // Método para carcular há quanto tempo foi postado a Promoção do Produto
